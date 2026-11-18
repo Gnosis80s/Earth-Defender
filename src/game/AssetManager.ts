@@ -1,0 +1,6391 @@
+import * as THREE from 'three';
+
+export class AssetManager {
+  static textures: Record<string, THREE.Texture> = {};
+  static generators: Record<string, () => THREE.Texture> = {};
+
+  static init() {
+    this.registerGenerators();
+    // Pre-warm immediate core assets for menu and stage 1 start
+    this.getTexture('player');
+    this.getTexture('player_gold');
+    this.getTexture('player_stealth');
+    this.getTexture('player_dreadnought');
+    this.getTexture('bulletPlayer');
+    this.getTexture('bulletEnemy');
+    this.getTexture('particle');
+    this.getTexture('star');
+  }
+
+  static getTexture(name: string): THREE.Texture {
+    if (!this.textures[name]) {
+      if (this.generators[name]) {
+        this.textures[name] = this.generators[name]();
+      } else {
+        console.warn(`[AssetManager] Unknown texture requested: ${name}`);
+      }
+    }
+    return this.textures[name];
+  }
+
+  static registerGenerators() {
+    this.generators['player'] = () => this.generatePlayerTexture();
+    this.generators['player_gold'] = () => this.generatePlayerGoldTexture();
+    this.generators['player_stealth'] = () => this.generatePlayerStealthTexture();
+    this.generators['player_dreadnought'] = () => this.generatePlayerDreadnoughtTexture();
+    this.generators['enemyScout'] = () => this.generateEnemyScoutTexture();
+    this.generators['enemyHeavy'] = () => this.generateEnemyHeavyTexture();
+    this.generators['enemyInterceptor'] = () => this.generateEnemyInterceptorTexture();
+    this.generators['enemySniper'] = () => this.generateEnemySniperTexture();
+    this.generators['subboss1'] = () => this.generateSubBossTexture();
+    this.generators['boss1'] = () => this.generateBossTexture(1);
+    this.generators['boss2'] = () => this.generateBossTexture(2);
+    this.generators['boss3'] = () => this.generateBossTexture(3);
+    this.generators['boss4'] = () => this.generateBossTexture(4);
+    this.generators['boss5'] = () => this.generateBossTexture(5);
+    this.generators['enemyBioDrone'] = () => this.generateEnemyBioDroneTexture();
+    this.generators['enemyBioStalker'] = () => this.generateEnemyBioStalkerTexture();
+    this.generators['enemyBioBehemoth'] = () => this.generateEnemyBioBehemothTexture();
+    this.generators['bulletPlayer'] = () => this.generateBullet(0x00ffff);
+    this.generators['bulletPlayer_green'] = () => this.generateBullet(0x00ff00);
+    this.generators['bulletPlayer_purple'] = () => this.generateBullet(0xff00ff);
+    this.generators['bulletPlayer_red'] = () => this.generateBullet(0xff0044);
+    this.generators['bulletEnemy'] = () => this.generateEnemyBullet();
+    this.generators['bulletBio'] = () => this.generateBioBullet();
+    this.generators['particle'] = () => this.generateParticle();
+    this.generators['missile'] = () => this.generateMissileTexture();
+    this.generators['missile_upgraded'] = () => this.generateMissileUpgradedTexture();
+    this.generators['star'] = () => this.generateStar();
+    this.generators['moon'] = () => this.generateMoon();
+    this.generators['earth'] = () => this.generateEarthTexture();
+    this.generators['bg_lunar'] = () => this.generateLunarLandscape();
+    this.generators['bg_solar_dock'] = () => this.generateSolarDockBackground();
+    this.generators['solar_mine'] = () => this.generateSolarMineTexture();
+    this.generators['bg_cavern_far'] = () => this.generateCavernFarLandscape();
+    this.generators['bg_cavern'] = () => this.generateCavernLandscape();
+    this.generators['bg_cavern_entry'] = () => this.generateCavernEntryLandscape();
+    this.generators['bg_cavern_to_factory_far'] = () => this.generateCavernToFactoryFarLandscape();
+    this.generators['bg_cavern_to_factory'] = () => this.generateCavernToFactoryLandscape();
+    this.generators['bg_factory_far'] = () => this.generateFactoryFarLandscape();
+    this.generators['bg_factory'] = () => this.generateFactoryLandscape();
+    this.generators['bg_factory_to_superstructure_far'] = () => this.generateFactoryToSuperstructureFarLandscape();
+    this.generators['bg_factory_to_superstructure'] = () => this.generateFactoryToSuperstructureLandscape();
+    this.generators['bg_superstructure_far'] = () => this.generateSuperstructureFarLandscape();
+    this.generators['bg_superstructure'] = () => this.generateSuperstructureLandscape();
+    this.generators['bg_mountains'] = () => this.generateMountains();
+    this.generators['bg_city'] = () => this.generateCity();
+    this.generators['bg_industrial'] = () => this.generateIndustrial();
+    this.generators['bg_citadel'] = () => this.generateCitadel();
+    this.generators['drone'] = () => this.generateDrone();
+    this.generators['powerup'] = () => this.generatePowerup();
+    this.generators['asteroid_large'] = () => this.generateAsteroid(72);
+    this.generators['asteroid_small'] = () => this.generateAsteroid(44);
+    this.generators['asteroid_gold'] = () => this.generateGoldenAsteroid(56);
+    this.generators['turret'] = () => this.generateTurretTexture();
+    this.generators['turret_base'] = () => this.generateTurretBaseTexture();
+    this.generators['turret_launcher'] = () => this.generateTurretLauncherTexture();
+    this.generators['bulletTurretLaser'] = () => this.generateTurretLaser();
+    this.generators['bulletIonLaser'] = () => this.generateIonLaser();
+    this.generators['blast_door_top'] = () => this.generateBlastDoorTop();
+    this.generators['blast_door_bottom'] = () => this.generateBlastDoorBottom();
+    this.generators['blast_door_frame'] = () => this.generateBlastDoorFrame();
+    this.generators['blast_door_horizontal_panel'] = () => this.generateBlastDoorHorizontalPanel();
+    this.generators['blast_door_horizontal_frame'] = () => this.generateBlastDoorHorizontalFrame();
+    this.generators['blast_door_horizontal_shaft'] = () => this.generateBlastDoorHorizontalShaft();
+    this.generators['subboss_gatekeeper'] = () => this.generateSubbossGatekeeperTexture();
+    this.generators['uk_launchpad_tarmac'] = () => this.generateUkLaunchpadTarmac();
+    this.generators['uk_launchpad_gantry'] = () => this.generateUkLaunchpadGantry();
+    this.generators['uk_launchpad_tower'] = () => this.generateUkLaunchpadTower();
+    this.generators['uk_launchpad_banner'] = () => this.generateUkLaunchpadBanner();
+    this.generators['uk_launchpad_silo'] = () => this.generateUkLaunchpadSilo();
+  }
+
+  private static createTextureFromCanvas(canvas: HTMLCanvasElement): THREE.Texture {
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }
+
+  private static generatePlayerTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 36;
+    canvas.height = 36;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Flagship Arcade Interceptor (Viper / R-9 Class)
+    // 1. Dark Shadow Silhouette Base
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.moveTo(35, 18); // Nose needle
+    ctx.lineTo(22, 11);
+    ctx.lineTo(8, 2);   // Top wingtip
+    ctx.lineTo(4, 8);
+    ctx.lineTo(10, 13);
+    ctx.lineTo(2, 13);  // Top engine
+    ctx.lineTo(2, 23);  // Bottom engine
+    ctx.lineTo(10, 23);
+    ctx.lineTo(4, 28);
+    ctx.lineTo(8, 34);  // Bottom wingtip
+    ctx.lineTo(22, 25);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Swept Delta Wings (Lower Layer - Navy Slate)
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(20, 18);
+    ctx.lineTo(8, 4);
+    ctx.lineTo(5, 8);
+    ctx.lineTo(12, 14);
+    ctx.lineTo(5, 28);
+    ctx.lineTo(8, 32);
+    ctx.lineTo(20, 18);
+    ctx.fill();
+
+    // Wing Primary Armor (Titanium White / Silver)
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath();
+    ctx.moveTo(22, 18);
+    ctx.lineTo(10, 5);
+    ctx.lineTo(7, 9);
+    ctx.lineTo(14, 15);
+    ctx.lineTo(7, 27);
+    ctx.lineTo(10, 31);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(22, 18);
+    ctx.lineTo(12, 7);
+    ctx.lineTo(10, 10);
+    ctx.lineTo(15, 16);
+    ctx.lineTo(10, 26);
+    ctx.lineTo(12, 29);
+    ctx.closePath();
+    ctx.fill();
+
+    // Blue Wing Decal Stripes
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(11, 8, 4, 3);
+    ctx.fillRect(11, 25, 4, 3);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(12, 9, 2, 2);
+    ctx.fillRect(12, 25, 2, 2);
+
+    // Wingtip Nav Lights
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(7, 3, 2, 3);
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(7, 30, 2, 3);
+
+    // 3. Central Fuselage Body (Aerodynamic Needle)
+    const hullGrad = ctx.createLinearGradient(0, 11, 0, 25);
+    hullGrad.addColorStop(0, '#f8fafc');
+    hullGrad.addColorStop(0.35, '#cbd5e1');
+    hullGrad.addColorStop(0.7, '#64748b');
+    hullGrad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = hullGrad;
+    ctx.beginPath();
+    ctx.moveTo(34, 18);
+    ctx.lineTo(16, 12);
+    ctx.lineTo(4, 13);
+    ctx.lineTo(4, 23);
+    ctx.lineTo(16, 24);
+    ctx.closePath();
+    ctx.fill();
+
+    // Upper Fuselage Highlight Ridge
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(33, 18);
+    ctx.lineTo(16, 13);
+    ctx.lineTo(6, 14);
+    ctx.lineTo(16, 15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dark Panel Inset Seam
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(18, 14); ctx.lineTo(18, 22);
+    ctx.moveTo(10, 14); ctx.lineTo(10, 22);
+    ctx.stroke();
+
+    // 4. Aero Glass Cockpit Canopy (Crystalline Cyan with internal HUD reflection)
+    const glassGrad = ctx.createLinearGradient(18, 14, 28, 20);
+    glassGrad.addColorStop(0, '#38bdf8');
+    glassGrad.addColorStop(0.4, '#0284c7');
+    glassGrad.addColorStop(0.8, '#0369a1');
+    glassGrad.addColorStop(1, '#082f49');
+    ctx.fillStyle = glassGrad;
+    ctx.beginPath();
+    ctx.moveTo(27, 18);
+    ctx.lineTo(21, 14);
+    ctx.lineTo(15, 14);
+    ctx.lineTo(15, 22);
+    ctx.lineTo(21, 22);
+    ctx.closePath();
+    ctx.fill();
+
+    // Specular Canopy Glint
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(19, 15, 5, 2);
+    ctx.fillRect(23, 16, 2, 2);
+
+    // Cockpit HUD cross-glint
+    ctx.fillStyle = '#a5f3fc';
+    ctx.fillRect(17, 18, 3, 1);
+
+    // 5. Twin Articulated Plasma Cannons (Mounted on Wing Roots)
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(20, 8, 8, 3);
+    ctx.fillRect(20, 25, 8, 3);
+
+    // Silver Gun Barrels
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(24, 9, 8, 1.5);
+    ctx.fillRect(24, 25.5, 8, 1.5);
+
+    // Red Hot Muzzle Tips
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(31, 8.5, 2, 2);
+    ctx.fillRect(31, 25.5, 2, 2);
+
+    // 6. Dual Rocket Thruster Engine Bells (Rear)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(2, 13, 3, 4);
+    ctx.fillRect(2, 19, 3, 4);
+
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(1, 14, 2, 2);
+    ctx.fillRect(1, 20, 2, 2);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(0, 14.5, 1.5, 1);
+    ctx.fillRect(0, 20.5, 1.5, 1);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generatePlayerGoldTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 36;
+    canvas.height = 36;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Golden Ace Royal Interceptor
+    // Dark Bronze Outline Base
+    ctx.fillStyle = '#451a03';
+    ctx.beginPath();
+    ctx.moveTo(35, 18);
+    ctx.lineTo(22, 11);
+    ctx.lineTo(8, 2);
+    ctx.lineTo(4, 8);
+    ctx.lineTo(10, 13);
+    ctx.lineTo(2, 13);
+    ctx.lineTo(2, 23);
+    ctx.lineTo(10, 23);
+    ctx.lineTo(4, 28);
+    ctx.lineTo(8, 34);
+    ctx.lineTo(22, 25);
+    ctx.closePath();
+    ctx.fill();
+
+    // Polished Gold Wings
+    ctx.fillStyle = '#78350f';
+    ctx.beginPath();
+    ctx.moveTo(20, 18);
+    ctx.lineTo(8, 4);
+    ctx.lineTo(5, 8);
+    ctx.lineTo(12, 14);
+    ctx.lineTo(5, 28);
+    ctx.lineTo(8, 32);
+    ctx.fill();
+
+    ctx.fillStyle = '#b45309';
+    ctx.beginPath();
+    ctx.moveTo(22, 18);
+    ctx.lineTo(10, 5);
+    ctx.lineTo(7, 9);
+    ctx.lineTo(14, 15);
+    ctx.lineTo(7, 27);
+    ctx.lineTo(10, 31);
+    ctx.fill();
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.moveTo(22, 18);
+    ctx.lineTo(12, 7);
+    ctx.lineTo(10, 10);
+    ctx.lineTo(15, 16);
+    ctx.lineTo(10, 26);
+    ctx.lineTo(12, 29);
+    ctx.fill();
+
+    // Radiant Gold Specular Leading Edge
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(12, 6, 6, 2);
+    ctx.fillRect(12, 28, 6, 2);
+
+    // Fuselage (Radiant Gold Alloy)
+    const goldGrad = ctx.createLinearGradient(0, 11, 0, 25);
+    goldGrad.addColorStop(0, '#fef9c3');
+    goldGrad.addColorStop(0.3, '#fde047');
+    goldGrad.addColorStop(0.7, '#d97706');
+    goldGrad.addColorStop(1, '#78350f');
+    ctx.fillStyle = goldGrad;
+    ctx.beginPath();
+    ctx.moveTo(34, 18);
+    ctx.lineTo(16, 12);
+    ctx.lineTo(4, 13);
+    ctx.lineTo(4, 23);
+    ctx.lineTo(16, 24);
+    ctx.closePath();
+    ctx.fill();
+
+    // Specular Crown Highlight
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(33, 18);
+    ctx.lineTo(16, 13);
+    ctx.lineTo(6, 14);
+    ctx.lineTo(16, 15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Diamond Cyan Cockpit
+    const cyanGrad = ctx.createLinearGradient(18, 14, 28, 20);
+    cyanGrad.addColorStop(0, '#67e8f9');
+    cyanGrad.addColorStop(0.5, '#06b6d4');
+    cyanGrad.addColorStop(1, '#0e7490');
+    ctx.fillStyle = cyanGrad;
+    ctx.beginPath();
+    ctx.moveTo(27, 18);
+    ctx.lineTo(21, 14);
+    ctx.lineTo(15, 14);
+    ctx.lineTo(15, 22);
+    ctx.lineTo(21, 22);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(19, 15, 5, 2);
+    ctx.fillRect(23, 16, 2, 2);
+
+    // Ruby Cannons & Chrome Coils
+    ctx.fillStyle = '#b45309';
+    ctx.fillRect(20, 8, 8, 3);
+    ctx.fillRect(20, 25, 8, 3);
+
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(24, 9, 8, 1.5);
+    ctx.fillRect(24, 25.5, 8, 1.5);
+
+    ctx.fillStyle = '#e11d48';
+    ctx.fillRect(31, 8.5, 2, 2);
+    ctx.fillRect(31, 25.5, 2, 2);
+
+    // Radiant Gold Thrusters
+    ctx.fillStyle = '#ff4400';
+    ctx.fillRect(1, 14, 3, 2);
+    ctx.fillRect(1, 20, 3, 2);
+    ctx.fillStyle = '#ffff00';
+    ctx.fillRect(0, 14.5, 2, 1);
+    ctx.fillRect(0, 20.5, 2, 1);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generatePlayerStealthTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 36;
+    canvas.height = 36;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Nightshade Stealth Interceptor (Matte Carbon & Neon Violet)
+    // Dark Void Base
+    ctx.fillStyle = '#050508';
+    ctx.beginPath();
+    ctx.moveTo(35, 18);
+    ctx.lineTo(18, 5);
+    ctx.lineTo(4, 2);
+    ctx.lineTo(8, 14);
+    ctx.lineTo(2, 14);
+    ctx.lineTo(2, 22);
+    ctx.lineTo(8, 22);
+    ctx.lineTo(4, 34);
+    ctx.lineTo(18, 31);
+    ctx.closePath();
+    ctx.fill();
+
+    // Carbon Fiber Wing Panels
+    ctx.fillStyle = '#18181b';
+    ctx.beginPath();
+    ctx.moveTo(32, 18);
+    ctx.lineTo(17, 7);
+    ctx.lineTo(6, 4);
+    ctx.lineTo(9, 15);
+    ctx.lineTo(6, 32);
+    ctx.lineTo(17, 29);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#27272a';
+    ctx.beginPath();
+    ctx.moveTo(30, 18);
+    ctx.lineTo(17, 9);
+    ctx.lineTo(8, 6);
+    ctx.lineTo(12, 16);
+    ctx.lineTo(8, 30);
+    ctx.lineTo(17, 27);
+    ctx.closePath();
+    ctx.fill();
+
+    // Violet Energized Hull Inset Conduits
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(30, 18); ctx.lineTo(14, 8);
+    ctx.moveTo(30, 18); ctx.lineTo(14, 28);
+    ctx.stroke();
+
+    // Fuselage (Faceted Stealth Diamond)
+    const stealthGrad = ctx.createLinearGradient(0, 12, 0, 24);
+    stealthGrad.addColorStop(0, '#3f3f46');
+    stealthGrad.addColorStop(0.5, '#18181b');
+    stealthGrad.addColorStop(1, '#09090b');
+    ctx.fillStyle = stealthGrad;
+    ctx.beginPath();
+    ctx.moveTo(34, 18);
+    ctx.lineTo(18, 12);
+    ctx.lineTo(4, 14);
+    ctx.lineTo(4, 22);
+    ctx.lineTo(18, 24);
+    ctx.closePath();
+    ctx.fill();
+
+    // Violet Smoked Visor Canopy
+    const visorGrad = ctx.createLinearGradient(16, 14, 26, 20);
+    visorGrad.addColorStop(0, '#e879f9');
+    visorGrad.addColorStop(0.4, '#a855f7');
+    visorGrad.addColorStop(1, '#3b0764');
+    ctx.fillStyle = visorGrad;
+    ctx.beginPath();
+    ctx.moveTo(26, 18);
+    ctx.lineTo(20, 14);
+    ctx.lineTo(14, 14);
+    ctx.lineTo(14, 22);
+    ctx.lineTo(20, 22);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#f5d0fe';
+    ctx.fillRect(18, 15, 4, 1.5);
+
+    // Concealed Twin Pulse Cannons
+    ctx.fillStyle = '#a855f7';
+    ctx.fillRect(26, 10, 6, 2);
+    ctx.fillRect(26, 24, 6, 2);
+    ctx.fillStyle = '#f0abfc';
+    ctx.fillRect(30, 10.5, 2, 1);
+    ctx.fillRect(30, 24.5, 2, 1);
+
+    // Antimatter Violet Thrusters
+    ctx.fillStyle = '#a21caf';
+    ctx.fillRect(1, 15, 3, 2);
+    ctx.fillRect(1, 19, 3, 2);
+    ctx.fillStyle = '#f472b6';
+    ctx.fillRect(0, 15.5, 2, 1);
+    ctx.fillRect(0, 19.5, 2, 1);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generatePlayerDreadnoughtTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Heavy Dreadnought Battlecruiser (Titanium Armor & Tri-Beam Battery)
+    // Dark Silhouette Base
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.moveTo(46, 24);
+    ctx.lineTo(32, 8);
+    ctx.lineTo(12, 4);
+    ctx.lineTo(4, 10);
+    ctx.lineTo(2, 20);
+    ctx.lineTo(2, 28);
+    ctx.lineTo(4, 38);
+    ctx.lineTo(12, 44);
+    ctx.lineTo(32, 40);
+    ctx.closePath();
+    ctx.fill();
+
+    // Heavy Plating (Dark Steel Chassis)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(6, 8, 32, 32);
+
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(8, 10, 28, 28);
+
+    // Top & Bottom Heavy Wing Armor
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.moveTo(34, 10);
+    ctx.lineTo(14, 6);
+    ctx.lineTo(8, 12);
+    ctx.lineTo(30, 16);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(34, 38);
+    ctx.lineTo(14, 42);
+    ctx.lineTo(8, 36);
+    ctx.lineTo(30, 32);
+    ctx.closePath();
+    ctx.fill();
+
+    // Hazard Stripes on Armor Flanks
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(12, 11, 4, 3);
+    ctx.fillRect(20, 11, 4, 3);
+    ctx.fillRect(12, 34, 4, 3);
+    ctx.fillRect(20, 34, 4, 3);
+
+    // Center Heavy Hull Core
+    const coreGrad = ctx.createLinearGradient(0, 16, 0, 32);
+    coreGrad.addColorStop(0, '#94a3b8');
+    coreGrad.addColorStop(0.5, '#475569');
+    coreGrad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.moveTo(44, 24);
+    ctx.lineTo(34, 16);
+    ctx.lineTo(10, 16);
+    ctx.lineTo(10, 32);
+    ctx.lineTo(34, 32);
+    ctx.closePath();
+    ctx.fill();
+
+    // Rivets & Armor Seams
+    ctx.fillStyle = '#cbd5e1';
+    for (let x = 14; x <= 30; x += 6) {
+      ctx.fillRect(x, 17, 2, 2);
+      ctx.fillRect(x, 29, 2, 2);
+    }
+
+    // Heavy Command Bridge Canopies (Dual Amber Optic Glass)
+    const bridgeGrad = ctx.createLinearGradient(24, 20, 34, 26);
+    bridgeGrad.addColorStop(0, '#fef08a');
+    bridgeGrad.addColorStop(0.4, '#f59e0b');
+    bridgeGrad.addColorStop(1, '#78350f');
+    ctx.fillStyle = bridgeGrad;
+    ctx.fillRect(26, 21, 10, 6);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(30, 22, 4, 2);
+
+    // Tri-Beam Heavy Cannons (Top, Center, Bottom)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(32, 6, 12, 4);
+    ctx.fillRect(36, 22, 10, 4);
+    ctx.fillRect(32, 38, 12, 4);
+
+    // Glowing Green Emitter Nodes
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(42, 7, 3, 2);
+    ctx.fillRect(44, 23, 3, 2);
+    ctx.fillRect(42, 39, 3, 2);
+    ctx.fillStyle = '#86efac';
+    ctx.fillRect(43, 7.5, 1.5, 1);
+    ctx.fillRect(45, 23.5, 1.5, 1);
+    ctx.fillRect(43, 39.5, 1.5, 1);
+
+    // Quad Heavy Thrust Engines (Rear)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(2, 11, 4, 5);
+    ctx.fillRect(2, 18, 4, 5);
+    ctx.fillRect(2, 25, 4, 5);
+    ctx.fillRect(2, 32, 4, 5);
+
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillRect(0, 12, 3, 3);
+    ctx.fillRect(0, 19, 3, 3);
+    ctx.fillRect(0, 26, 3, 3);
+    ctx.fillRect(0, 33, 3, 3);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 13, 1.5, 1);
+    ctx.fillRect(0, 20, 1.5, 1);
+    ctx.fillRect(0, 27, 1.5, 1);
+    ctx.fillRect(0, 34, 1.5, 1);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateEnemyScoutTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 36;
+    canvas.height = 36;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-bit NeoGeo / Late 80s Arcade Red Fighter
+    // Dark outline
+    ctx.fillStyle = '#1a0307';
+    ctx.beginPath();
+    ctx.moveTo(34, 18);
+    ctx.lineTo(8, 2);
+    ctx.lineTo(2, 8);
+    ctx.lineTo(12, 18);
+    ctx.lineTo(2, 28);
+    ctx.lineTo(8, 34);
+    ctx.closePath();
+    ctx.fill();
+
+    // Deep Shadow Base
+    ctx.fillStyle = '#450a0a';
+    ctx.beginPath();
+    ctx.moveTo(32, 18);
+    ctx.lineTo(9, 4);
+    ctx.lineTo(4, 9);
+    ctx.lineTo(12, 18);
+    ctx.lineTo(4, 27);
+    ctx.lineTo(9, 32);
+    ctx.closePath();
+    ctx.fill();
+
+    // Main Crimson Hull
+    ctx.fillStyle = '#991b1b';
+    ctx.beginPath();
+    ctx.moveTo(32, 18);
+    ctx.lineTo(11, 6);
+    ctx.lineTo(6, 11);
+    ctx.lineTo(14, 18);
+    ctx.lineTo(6, 25);
+    ctx.lineTo(11, 30);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bright Scarlet Upper Armor Plates
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.moveTo(30, 18);
+    ctx.lineTo(14, 8);
+    ctx.lineTo(18, 14);
+    ctx.lineTo(26, 18);
+    ctx.lineTo(18, 22);
+    ctx.lineTo(14, 28);
+    ctx.closePath();
+    ctx.fill();
+
+    // Specular Highlight Ridge
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(16, 10, 10, 2);
+    ctx.fillRect(16, 24, 10, 2);
+    ctx.fillStyle = '#fca5a5';
+    ctx.fillRect(22, 17, 6, 2);
+
+    // Dithered panel shading on lower wing
+    ctx.fillStyle = '#7f1d1d';
+    for (let x = 8; x <= 20; x += 4) {
+      ctx.fillRect(x, 24, 2, 2);
+    }
+
+    // Canopy (Golden Amber with Glass Glint)
+    ctx.fillStyle = '#d97706';
+    ctx.fillRect(18, 16, 8, 4);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(20, 17, 5, 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(23, 17, 2, 1);
+
+    // Wingtip Gun Pods (Slate & Muzzle Tip)
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(2, 6, 12, 3);
+    ctx.fillRect(2, 27, 12, 3);
+    ctx.fillStyle = '#ff6600';
+    ctx.fillRect(0, 7, 3, 1);
+    ctx.fillRect(0, 28, 3, 1);
+
+    // Rear Thrusters with Blue Jet Glow
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(2, 13, 4, 10);
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillRect(0, 15, 2, 6);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 17, 1, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateEnemyHeavyTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 68;
+    canvas.height = 68;
+    const ctx = canvas.getContext('2d')!;
+
+    // NeoGeo Powerhouse Gunship
+    // Dark silhouette outline
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.moveTo(10, 34); // Nose
+    ctx.lineTo(34, 6);   // Top wing tip
+    ctx.lineTo(58, 6);   // Top back
+    ctx.lineTo(48, 34);  // Center back
+    ctx.lineTo(58, 62);  // Bottom back
+    ctx.lineTo(34, 62);  // Bottom wing tip
+    ctx.closePath();
+    ctx.fill();
+
+    // Dark Steel Inner Body
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(12, 34);
+    ctx.lineTo(34, 8);
+    ctx.lineTo(56, 8);
+    ctx.lineTo(46, 34);
+    ctx.lineTo(56, 60);
+    ctx.lineTo(34, 60);
+    ctx.closePath();
+    ctx.fill();
+
+    // Armor Plates (Slate Grey / Steel)
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(20, 12, 28, 16);
+    ctx.fillRect(20, 40, 28, 16);
+
+    // Deep Crimson Heavy Armor Plating
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.moveTo(22, 34);
+    ctx.lineTo(38, 14);
+    ctx.lineTo(48, 14);
+    ctx.lineTo(40, 34);
+    ctx.lineTo(48, 54);
+    ctx.lineTo(38, 54);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#b91c1c';
+    ctx.beginPath();
+    ctx.moveTo(24, 34);
+    ctx.lineTo(38, 18);
+    ctx.lineTo(44, 18);
+    ctx.lineTo(38, 34);
+    ctx.lineTo(44, 50);
+    ctx.lineTo(38, 50);
+    ctx.closePath();
+    ctx.fill();
+
+    // Crimson Highlight
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(30, 20, 10, 2);
+    ctx.fillRect(30, 46, 10, 2);
+
+    // Dithered shading along bottom wings
+    ctx.fillStyle = '#0f172a';
+    for (let x = 24; x <= 50; x += 4) {
+      ctx.fillRect(x, 52, 2, 2);
+    }
+
+    // Hazard Stripes on Rear Armor
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(44, 22, 10, 24);
+    ctx.fillStyle = '#f59e0b';
+    for (let y = 24; y < 44; y += 6) {
+      ctx.fillRect(44, y, 10, 3);
+    }
+
+    // Quad Heavy Guns (Top 2, Bottom 2) with Silver Barrels & Heat Vents
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(4, 12, 24, 6);
+    ctx.fillRect(4, 50, 24, 6);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(4, 13, 22, 2);
+    ctx.fillRect(4, 51, 22, 2);
+
+    // Glowing Laser Barrels
+    ctx.fillStyle = '#ff0033';
+    ctx.fillRect(0, 13, 5, 4);
+    ctx.fillRect(0, 51, 5, 4);
+    ctx.fillStyle = '#ff9999';
+    ctx.fillRect(0, 14, 3, 2);
+    ctx.fillRect(0, 52, 3, 2);
+
+    // Central Reactor Core (Glowing Cyan Energy Matrix)
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.arc(32, 34, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(32, 34, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e0f2fe';
+    ctx.fillRect(30, 32, 4, 4);
+
+    // Engine Thruster Exhaust Plumes (Dual Blue & White)
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.moveTo(48, 34);
+    ctx.lineTo(66, 24);
+    ctx.lineTo(60, 34);
+    ctx.lineTo(66, 44);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(48, 34);
+    ctx.lineTo(58, 28);
+    ctx.lineTo(54, 34);
+    ctx.lineTo(58, 40);
+    ctx.closePath();
+    ctx.fill();
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateEnemyInterceptorTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 44;
+    canvas.height = 44;
+    const ctx = canvas.getContext('2d')!;
+
+    // Sleek 16-bit Cyber Interceptor
+    // Dark Navy Outline
+    ctx.fillStyle = '#030712';
+    ctx.beginPath();
+    ctx.moveTo(42, 22);
+    ctx.lineTo(4, 2);
+    ctx.lineTo(10, 12);
+    ctx.lineTo(2, 22);
+    ctx.lineTo(10, 32);
+    ctx.lineTo(4, 42);
+    ctx.closePath();
+    ctx.fill();
+
+    // Base Cobalt Body
+    ctx.fillStyle = '#1e3a8a';
+    ctx.beginPath();
+    ctx.moveTo(40, 22);
+    ctx.lineTo(6, 4);
+    ctx.lineTo(12, 14);
+    ctx.lineTo(4, 22);
+    ctx.lineTo(12, 30);
+    ctx.lineTo(6, 40);
+    ctx.closePath();
+    ctx.fill();
+
+    // Upper Cyan Wings & Plates
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.moveTo(38, 22);
+    ctx.lineTo(10, 8);
+    ctx.lineTo(16, 16);
+    ctx.lineTo(28, 22);
+    ctx.lineTo(16, 28);
+    ctx.lineTo(10, 36);
+    ctx.closePath();
+    ctx.fill();
+
+    // Electric Cyan Highlights
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillRect(18, 10, 12, 3);
+    ctx.fillRect(18, 31, 12, 3);
+    ctx.fillStyle = '#a5f3fc';
+    ctx.fillRect(24, 11, 8, 1);
+    ctx.fillRect(24, 32, 8, 1);
+
+    // Dithered 16-bit shading on bottom wing
+    ctx.fillStyle = '#0f172a';
+    for (let x = 12; x <= 26; x += 4) {
+      ctx.fillRect(x, 34, 2, 2);
+    }
+
+    // Amber/Gold Visor Cockpit
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(20, 20, 12, 4);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(24, 21, 6, 2);
+
+    // Engine Intakes with Heat Grid
+    ctx.fillStyle = '#ea580c';
+    ctx.fillRect(10, 18, 4, 8);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(10, 21, 2, 2);
+
+    // Plasma Emitter Nose Tip
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(38, 21, 4, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateEnemySniperTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d')!;
+
+    // Stealth Purple Railgun Sniper Craft
+    // Obsidian Outline
+    ctx.fillStyle = '#090514';
+    ctx.beginPath();
+    ctx.moveTo(46, 24);
+    ctx.lineTo(24, 2);
+    ctx.lineTo(2, 24);
+    ctx.lineTo(24, 46);
+    ctx.closePath();
+    ctx.fill();
+
+    // Deep Purple Shadow Base
+    ctx.fillStyle = '#2e1065';
+    ctx.beginPath();
+    ctx.moveTo(44, 24);
+    ctx.lineTo(24, 4);
+    ctx.lineTo(4, 24);
+    ctx.lineTo(24, 44);
+    ctx.closePath();
+    ctx.fill();
+
+    // Royal Purple Armor
+    ctx.fillStyle = '#581c87';
+    ctx.beginPath();
+    ctx.moveTo(42, 24);
+    ctx.lineTo(24, 8);
+    ctx.lineTo(8, 24);
+    ctx.lineTo(24, 40);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bright Violet Facet
+    ctx.fillStyle = '#9333ea';
+    ctx.beginPath();
+    ctx.moveTo(40, 24);
+    ctx.lineTo(24, 12);
+    ctx.lineTo(16, 24);
+    ctx.closePath();
+    ctx.fill();
+
+    // Specular Highlight
+    ctx.fillStyle = '#c084fc';
+    ctx.fillRect(26, 14, 10, 2);
+
+    // Dithered shading on lower facet
+    ctx.fillStyle = '#1e1b4b';
+    for (let x = 12; x <= 32; x += 4) {
+      ctx.fillRect(x, 32, 2, 2);
+    }
+
+    // Central Extended Railgun Barrel & Magnetic Rings
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(18, 22, 28, 4);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(18, 23, 28, 2);
+
+    // Gold Accelerator Rings
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(26, 20, 3, 8);
+    ctx.fillRect(34, 20, 3, 8);
+    ctx.fillRect(42, 20, 3, 8);
+
+    // Large Targeting Optic Sensor Eye
+    ctx.fillStyle = '#78350f';
+    ctx.beginPath();
+    ctx.arc(20, 24, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(20, 24, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(19, 23, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(18, 22, 2, 2);
+
+    // Red Target Reticle Crosshair
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(20, 16); ctx.lineTo(20, 32);
+    ctx.moveTo(12, 24); ctx.lineTo(28, 24);
+    ctx.stroke();
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateSubBossTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 96;
+    canvas.height = 96;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit NeoGeo Heavy Command Gunship Sub-Boss
+    // Dark Steel Outline
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.moveTo(14, 48); // Nose
+    ctx.lineTo(48, 12); // Top wing tip
+    ctx.lineTo(84, 12); // Top rear
+    ctx.lineTo(68, 48); // Center rear
+    ctx.lineTo(84, 84); // Bottom rear
+    ctx.lineTo(48, 84); // Bottom wing tip
+    ctx.closePath();
+    ctx.fill();
+
+    // Main Steel Hull
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(16, 48);
+    ctx.lineTo(48, 14);
+    ctx.lineTo(82, 14);
+    ctx.lineTo(66, 48);
+    ctx.lineTo(82, 82);
+    ctx.lineTo(48, 82);
+    ctx.closePath();
+    ctx.fill();
+
+    // Medium Steel Armor Plates
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.moveTo(26, 48);
+    ctx.lineTo(50, 22);
+    ctx.lineTo(76, 22);
+    ctx.lineTo(58, 48);
+    ctx.lineTo(76, 74);
+    ctx.lineTo(50, 74);
+    ctx.closePath();
+    ctx.fill();
+
+    // Light Steel Panels & Rivets
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(36, 28, 32, 12);
+    ctx.fillRect(36, 56, 32, 12);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(38, 30, 28, 2);
+    ctx.fillRect(38, 58, 28, 2);
+
+    // Rivets
+    ctx.fillStyle = '#cbd5e1';
+    for (let x = 40; x <= 64; x += 8) {
+      ctx.fillRect(x, 34, 2, 2);
+      ctx.fillRect(x, 62, 2, 2);
+    }
+
+    // Dithered Shading on Lower Wings
+    ctx.fillStyle = '#0f172a';
+    for (let x = 30; x <= 70; x += 4) {
+      for (let y = 68; y <= 78; y += 4) {
+        if ((x + y) % 8 === 0) ctx.fillRect(x, y, 2, 2);
+      }
+    }
+
+    // Triple Heavy Cannon Barrels (Top, Center, Bottom)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(6, 18, 36, 8);
+    ctx.fillRect(6, 70, 36, 8);
+    ctx.fillRect(2, 44, 28, 8);
+
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(6, 20, 34, 4);
+    ctx.fillRect(6, 72, 34, 4);
+    ctx.fillRect(2, 46, 26, 4);
+
+    // Laser Muzzle Glow
+    ctx.fillStyle = '#ff0033';
+    ctx.fillRect(0, 19, 6, 6);
+    ctx.fillRect(0, 71, 6, 6);
+    ctx.fillRect(0, 45, 4, 6);
+
+    // Hyper-Reactor Matrix (Glowing Cyan Core)
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.arc(58, 48, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.arc(58, 48, 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(56, 46, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Thruster Flames
+    ctx.fillStyle = '#ff8800';
+    ctx.beginPath();
+    ctx.moveTo(66, 48);
+    ctx.lineTo(92, 34);
+    ctx.lineTo(82, 48);
+    ctx.lineTo(92, 62);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#ffff00';
+    ctx.beginPath();
+    ctx.moveTo(66, 48);
+    ctx.lineTo(84, 38);
+    ctx.lineTo(76, 48);
+    ctx.lineTo(84, 58);
+    ctx.closePath();
+    ctx.fill();
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateBossTexture(type: number = 1) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d')!;
+    
+    if (type === 1) {
+      // Stage 1 Boss: MECHA DREADNOUGHT (Heavy Armored Assault Fortress)
+      // 1. Dark Base Silhouette
+      ctx.fillStyle = '#020617';
+      ctx.beginPath();
+      ctx.moveTo(12, 64);   // Front ram prow
+      ctx.lineTo(36, 16);   // Top diagonal
+      ctx.lineTo(96, 12);   // Top back
+      ctx.lineTo(120, 36);  // Top thruster
+      ctx.lineTo(108, 64);  // Rear center
+      ctx.lineTo(120, 92);  // Bottom thruster
+      ctx.lineTo(96, 116);  // Bottom back
+      ctx.lineTo(36, 112);  // Bottom diagonal
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. Heavy Gunmetal Hull Frame
+      const hullGrad = ctx.createLinearGradient(0, 20, 0, 108);
+      hullGrad.addColorStop(0, '#475569');
+      hullGrad.addColorStop(0.5, '#1e293b');
+      hullGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = hullGrad;
+      ctx.beginPath();
+      ctx.moveTo(16, 64);
+      ctx.lineTo(38, 20);
+      ctx.lineTo(92, 16);
+      ctx.lineTo(114, 40);
+      ctx.lineTo(102, 64);
+      ctx.lineTo(114, 88);
+      ctx.lineTo(92, 112);
+      ctx.lineTo(38, 108);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. Top & Bottom Heavy Reinforced Blast Armor
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(36, 24, 56, 20);
+      ctx.fillRect(36, 84, 56, 20);
+
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(40, 26, 48, 6);
+      ctx.fillRect(40, 96, 48, 6);
+
+      // Hazard Caution Stripes on Armor Flanks
+      ctx.fillStyle = '#eab308';
+      for (let x = 44; x <= 80; x += 12) {
+        ctx.fillRect(x, 34, 5, 8);
+        ctx.fillRect(x, 86, 5, 8);
+      }
+
+      // 4. Exposed Hydraulic Pipes & Power Cables
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(30, 48); ctx.lineTo(60, 44); ctx.lineTo(90, 48);
+      ctx.moveTo(30, 80); ctx.lineTo(60, 84); ctx.lineTo(90, 80);
+      ctx.stroke();
+
+      // 5. Heavy Twin Kinetic Cannon Batteries (Top & Bottom Fore)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(4, 38, 30, 8);
+      ctx.fillRect(4, 82, 30, 8);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(2, 40, 26, 4);
+      ctx.fillRect(2, 84, 26, 4);
+
+      // Red Hot Cannon Muzzles
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(0, 39, 4, 6);
+      ctx.fillRect(0, 83, 4, 6);
+
+      // 6. Central Heavy Cyclops Hyper-Reactor Core
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(60, 64, 24, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(60, 64, 22, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Crimson Energy Core
+      const coreGrad = ctx.createRadialGradient(58, 62, 2, 60, 64, 18);
+      coreGrad.addColorStop(0, '#ffffff');
+      coreGrad.addColorStop(0.3, '#fef08a');
+      coreGrad.addColorStop(0.6, '#ef4444');
+      coreGrad.addColorStop(1, '#7f1d1d');
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(60, 64, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 7. Quad Heavy Thrust Engines (Rear)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(106, 28, 16, 14);
+      ctx.fillRect(106, 86, 16, 14);
+
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(116, 31, 8, 8);
+      ctx.fillRect(116, 89, 8, 8);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(118, 33, 4, 4);
+      ctx.fillRect(118, 91, 4, 4);
+    } else if (type === 2) {
+      // Stage 2 Boss: CYBER CORE (Assault Command Fortress)
+      // 1. Dark Silhouette Outline
+      ctx.fillStyle = '#020617';
+      ctx.beginPath();
+      ctx.moveTo(14, 64);   // Front nose ram
+      ctx.lineTo(46, 20);   // Top forward fin
+      ctx.lineTo(92, 14);   // Top deck
+      ctx.lineTo(118, 38);  // Top thruster pod
+      ctx.lineTo(104, 64);  // Rear center
+      ctx.lineTo(118, 90);  // Bottom thruster pod
+      ctx.lineTo(92, 114);  // Bottom deck
+      ctx.lineTo(46, 108);  // Bottom forward fin
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. Heavy Gunmetal Hull Frame
+      const hullGrad = ctx.createLinearGradient(0, 18, 0, 110);
+      hullGrad.addColorStop(0, '#334155');
+      hullGrad.addColorStop(0.5, '#1e293b');
+      hullGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = hullGrad;
+      ctx.beginPath();
+      ctx.moveTo(18, 64);
+      ctx.lineTo(48, 24);
+      ctx.lineTo(88, 18);
+      ctx.lineTo(112, 40);
+      ctx.lineTo(100, 64);
+      ctx.lineTo(112, 88);
+      ctx.lineTo(88, 110);
+      ctx.lineTo(48, 104);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. Reinforced Cobalt Armor Plates & Hazard Striping
+      ctx.fillStyle = '#1e3a8a';
+      ctx.fillRect(36, 28, 48, 18);
+      ctx.fillRect(36, 82, 48, 18);
+
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(38, 30, 44, 4);
+      ctx.fillRect(38, 94, 44, 4);
+
+      // Hazard Stripes
+      ctx.fillStyle = '#eab308';
+      for (let x = 44; x <= 74; x += 10) {
+        ctx.fillRect(x, 36, 4, 8);
+        ctx.fillRect(x, 84, 4, 8);
+      }
+
+      // 4. Quad Kinetic Railguns & Heavy Gun Barrels
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(6, 46, 28, 6);
+      ctx.fillRect(6, 76, 28, 6);
+      ctx.fillRect(20, 20, 24, 6);
+      ctx.fillRect(20, 102, 24, 6);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(4, 47, 26, 4);
+      ctx.fillRect(4, 77, 26, 4);
+      ctx.fillRect(18, 21, 22, 4);
+      ctx.fillRect(18, 103, 22, 4);
+
+      // Glowing Cyan Rail Muzzle Tips
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(0, 46, 4, 6);
+      ctx.fillRect(0, 76, 4, 6);
+      ctx.fillRect(14, 20, 4, 6);
+      ctx.fillRect(14, 102, 4, 6);
+
+      // 5. Central Cyber Core Matrix (Multi-Ring Pulsing Energy Reactor)
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(62, 64, 22, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(62, 64, 20, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const coreGrad = ctx.createRadialGradient(60, 62, 2, 62, 64, 16);
+      coreGrad.addColorStop(0, '#ffffff');
+      coreGrad.addColorStop(0.3, '#67e8f9');
+      coreGrad.addColorStop(0.7, '#06b6d4');
+      coreGrad.addColorStop(1, '#083344');
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(62, 64, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Specular Glint
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(58, 60, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 6. Dual Plasma Thrust Engines (Rear)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(104, 32, 18, 14);
+      ctx.fillRect(104, 82, 18, 14);
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(116, 35, 8, 8);
+      ctx.fillRect(116, 85, 8, 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(118, 37, 4, 4);
+      ctx.fillRect(118, 87, 4, 4);
+    } else if (type === 3) {
+      // Stage 3 Boss: SOLAR DOCK OVERLORD (Orbital Solar Docking Array Fort)
+      // 1. Dark Base Frame
+      ctx.fillStyle = '#020617';
+      ctx.beginPath();
+      ctx.moveTo(10, 64);
+      ctx.lineTo(40, 24);
+      ctx.lineTo(104, 24);
+      ctx.lineTo(122, 64);
+      ctx.lineTo(104, 104);
+      ctx.lineTo(40, 104);
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. High-Efficiency Photovoltaic Solar Wings (Top & Bottom Arrays)
+      ctx.fillStyle = '#075985';
+      ctx.fillRect(16, 6, 96, 18);
+      ctx.fillRect(16, 104, 96, 18);
+
+      // Gold Framework Grid
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(16, 6, 96, 18);
+      ctx.strokeRect(16, 104, 96, 18);
+
+      for (let x = 28; x < 108; x += 14) {
+        ctx.beginPath();
+        ctx.moveTo(x, 6);
+        ctx.lineTo(x, 24);
+        ctx.moveTo(x, 104);
+        ctx.lineTo(x, 122);
+        ctx.stroke();
+      }
+
+      // 3. Central Fortress Hull (Reinforced Gold & Slate Armor)
+      const fortGrad = ctx.createLinearGradient(0, 26, 0, 102);
+      fortGrad.addColorStop(0, '#475569');
+      fortGrad.addColorStop(0.5, '#1e293b');
+      fortGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = fortGrad;
+      ctx.beginPath();
+      ctx.moveTo(14, 64);
+      ctx.lineTo(42, 28);
+      ctx.lineTo(100, 28);
+      ctx.lineTo(116, 64);
+      ctx.lineTo(100, 100);
+      ctx.lineTo(42, 100);
+      ctx.closePath();
+      ctx.fill();
+
+      // Gold Trim Bulkheads
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(36, 34, 56, 10);
+      ctx.fillRect(36, 84, 56, 10);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(38, 36, 52, 4);
+      ctx.fillRect(38, 88, 52, 4);
+
+      // 4. Central Solar Siphon Core (Glowing Amber / Gold Star Core)
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(64, 64, 24, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(64, 64, 22, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const sunGrad = ctx.createRadialGradient(62, 62, 2, 64, 64, 18);
+      sunGrad.addColorStop(0, '#ffffff');
+      sunGrad.addColorStop(0.3, '#fef08a');
+      sunGrad.addColorStop(0.6, '#f59e0b');
+      sunGrad.addColorStop(1, '#78350f');
+      ctx.fillStyle = sunGrad;
+      ctx.beginPath();
+      ctx.arc(64, 64, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 5. Heavy Twin Solar-Charged Cannons
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(6, 48, 32, 8);
+      ctx.fillRect(6, 72, 32, 8);
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(4, 50, 30, 4);
+      ctx.fillRect(4, 74, 30, 4);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 49, 4, 6);
+      ctx.fillRect(0, 73, 4, 6);
+    } else if (type === 4) {
+      // Stage 4 Boss: VOID LEVIATHAN (16-Bit Biomechanical Dread Beast)
+      // 1. Dark Chitin Silhouette
+      ctx.fillStyle = '#0f051d';
+      ctx.beginPath();
+      ctx.moveTo(8, 64);    // Front mandible mouth
+      ctx.lineTo(28, 18);   // Top blade wing
+      ctx.lineTo(54, 8);
+      ctx.lineTo(116, 24);  // Top tentacle
+      ctx.lineTo(92, 64);   // Core tail
+      ctx.lineTo(116, 104); // Bottom tentacle
+      ctx.lineTo(54, 120);
+      ctx.lineTo(28, 110);
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. Chitin Carapace Plates (Deep Void Purple & Obsidian)
+      const voidGrad = ctx.createLinearGradient(0, 14, 0, 114);
+      voidGrad.addColorStop(0, '#7e22ce');
+      voidGrad.addColorStop(0.5, '#3b0764');
+      voidGrad.addColorStop(1, '#1e1b4b');
+      ctx.fillStyle = voidGrad;
+      ctx.beginPath();
+      ctx.moveTo(14, 64);
+      ctx.lineTo(32, 24);
+      ctx.lineTo(56, 14);
+      ctx.lineTo(108, 30);
+      ctx.lineTo(86, 64);
+      ctx.lineTo(108, 98);
+      ctx.lineTo(56, 114);
+      ctx.lineTo(32, 104);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. Chitinous Armor Ridges & Spikes
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath();
+      ctx.moveTo(40, 28); ctx.lineTo(20, 10); ctx.lineTo(50, 20); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(70, 24); ctx.lineTo(50, 4);  ctx.lineTo(80, 18); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(40, 100); ctx.lineTo(20, 118); ctx.lineTo(50, 108); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(70, 104); ctx.lineTo(50, 124); ctx.lineTo(80, 110); ctx.fill();
+
+      // 4. Exposed Bio-Vascular Muscle Core (Crimson / Violet)
+      ctx.fillStyle = '#9d174d';
+      ctx.beginPath();
+      ctx.ellipse(54, 64, 22, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#e11d48';
+      ctx.beginPath();
+      ctx.ellipse(50, 64, 14, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 5. Menacing Alien Mandibles (Front)
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.moveTo(8, 48); ctx.lineTo(26, 56); ctx.lineTo(22, 44); ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(8, 80); ctx.lineTo(26, 72); ctx.lineTo(22, 84); ctx.closePath(); ctx.fill();
+
+      // 6. Multi-Cluster Bioluminescent Optic Eyes (Bright Yellow & Crimson)
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.arc(36, 52, 6, 0, Math.PI * 2);
+      ctx.arc(36, 76, 6, 0, Math.PI * 2);
+      ctx.arc(48, 64, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(34, 50, 2.5, 0, Math.PI * 2);
+      ctx.arc(34, 74, 2.5, 0, Math.PI * 2);
+      ctx.arc(46, 62, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 7. Acidic Bio-Plasma Siphon Vents (Top & Bottom)
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(80, 36, 12, 4);
+      ctx.fillRect(80, 88, 12, 4);
+      ctx.fillStyle = '#a7f3d0';
+      ctx.fillRect(82, 37, 8, 2);
+      ctx.fillRect(82, 89, 8, 2);
+    } else {
+      // Stage 5 Final Boss: MOTHER BRAIN OVERLORD (Biomechanical Cyber-Neural Core)
+      // 1. Heavy Armored Containment Chassis (Octagonal Cage)
+      ctx.fillStyle = '#020617';
+      ctx.beginPath();
+      ctx.arc(64, 64, 62, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(64, 64, 58, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Titanium Structural Cage Ribs
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(14, 14, 100, 100);
+
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(64, 64, 52, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 2. Glass Bio-Containment Cylinder (Glint & Fluid)
+      const fluidGrad = ctx.createRadialGradient(64, 64, 10, 64, 64, 48);
+      fluidGrad.addColorStop(0, '#be185d');
+      fluidGrad.addColorStop(0.6, '#831843');
+      fluidGrad.addColorStop(1, '#500724');
+      ctx.fillStyle = fluidGrad;
+      ctx.beginPath();
+      ctx.arc(64, 64, 46, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3. Convoluted Cerebral Gyri (16-Bit Detailed Brain Folds)
+      const brainLobes = [
+        { x: 50, y: 48, r: 16 }, { x: 78, y: 48, r: 16 },
+        { x: 44, y: 64, r: 15 }, { x: 84, y: 64, r: 15 },
+        { x: 52, y: 80, r: 16 }, { x: 76, y: 80, r: 16 },
+        { x: 64, y: 64, r: 18 }
+      ];
+
+      ctx.fillStyle = '#f43f5e';
+      for (const lobe of brainLobes) {
+        ctx.beginPath();
+        ctx.arc(lobe.x, lobe.y, lobe.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#fda4af';
+      for (const lobe of brainLobes) {
+        ctx.beginPath();
+        ctx.arc(lobe.x - 2, lobe.y - 2, lobe.r * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Brain Synaptic Sulci / Wrinkles
+      ctx.strokeStyle = '#881337';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(64 + Math.cos(a) * 8, 64 + Math.sin(a) * 8);
+        ctx.lineTo(64 + Math.cos(a) * 36, 64 + Math.sin(a) * 36);
+        ctx.stroke();
+      }
+
+      // 4. Central Cybernetic Master Optic Eye (Bionic Emerald Core)
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(58, 64, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(58, 64, 16, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const eyeGrad = ctx.createRadialGradient(56, 62, 2, 58, 64, 14);
+      eyeGrad.addColorStop(0, '#ffffff');
+      eyeGrad.addColorStop(0.3, '#34d399');
+      eyeGrad.addColorStop(0.7, '#059669');
+      eyeGrad.addColorStop(1, '#064e3b');
+      ctx.fillStyle = eyeGrad;
+      ctx.beginPath();
+      ctx.arc(58, 64, 13, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Specular Eye Reflection
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(54, 60, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 5. Heavy Neural Interlink Conduits & High-Voltage Cables
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + 0.39;
+        ctx.beginPath();
+        ctx.moveTo(64 + Math.cos(a) * 44, 64 + Math.sin(a) * 44);
+        ctx.lineTo(64 + Math.cos(a) * 60, 64 + Math.sin(a) * 60);
+        ctx.stroke();
+      }
+
+      // Glass specular reflection highlight across dome
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(64, 64, 44, Math.PI * 1.05, Math.PI * 1.45);
+      ctx.stroke();
+    }
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateEnemyBioDroneTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 36;
+    canvas.height = 36;
+    const ctx = canvas.getContext('2d')!;
+
+    // Biomechanical Alien Parasite / Drone (R-Type / Gradius style)
+    // Dark Chitin Outline
+    ctx.fillStyle = '#022c22';
+    ctx.beginPath();
+    ctx.ellipse(18, 18, 17, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Deep Emerald Bio-Shell
+    ctx.fillStyle = '#064e3b';
+    ctx.beginPath();
+    ctx.ellipse(18, 18, 15, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Jade Chitin Plates
+    ctx.fillStyle = '#059669';
+    ctx.beginPath();
+    ctx.ellipse(16, 16, 12, 8, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Vibrant Lime Ridge Highlights
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(8, 12, 12, 2);
+    ctx.fillRect(8, 20, 10, 2);
+    ctx.fillStyle = '#34d399';
+    ctx.fillRect(10, 13, 6, 1);
+
+    // Dithered organic shading on lower sac
+    ctx.fillStyle = '#022c22';
+    for (let x = 12; x <= 24; x += 4) {
+      ctx.fillRect(x, 22, 2, 2);
+    }
+
+    // Glowing Multi-Optic Alien Eyes (Amber / Green)
+    ctx.fillStyle = '#a3e635';
+    ctx.beginPath();
+    ctx.arc(10, 13, 3, 0, Math.PI * 2);
+    ctx.arc(10, 21, 3, 0, Math.PI * 2);
+    ctx.arc(14, 17, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(9, 12, 1.5, 0, Math.PI * 2);
+    ctx.arc(9, 20, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Acidic Tail / Tendril Fins with Glowing Tips
+    ctx.strokeStyle = '#059669';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(30, 8);
+    ctx.lineTo(35, 3);
+    ctx.moveTo(30, 28);
+    ctx.lineTo(35, 33);
+    ctx.stroke();
+
+    ctx.fillStyle = '#a3e635';
+    ctx.fillRect(34, 2, 2, 2);
+    ctx.fillRect(34, 32, 2, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateEnemyBioStalkerTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d')!;
+
+    // Organic Crimson & Purple Mantis Hunter
+    // Dark Outline
+    ctx.fillStyle = '#2e0219';
+    ctx.beginPath();
+    ctx.moveTo(6, 24);
+    ctx.lineTo(38, 4);
+    ctx.lineTo(46, 24);
+    ctx.lineTo(38, 44);
+    ctx.closePath();
+    ctx.fill();
+
+    // Deep Plum Shell Base
+    ctx.fillStyle = '#701a75';
+    ctx.beginPath();
+    ctx.moveTo(8, 24);
+    ctx.lineTo(36, 6);
+    ctx.lineTo(44, 24);
+    ctx.lineTo(36, 42);
+    ctx.closePath();
+    ctx.fill();
+
+    // Crimson Carapace Plates
+    ctx.fillStyle = '#9f1239';
+    ctx.beginPath();
+    ctx.moveTo(12, 24);
+    ctx.lineTo(34, 10);
+    ctx.lineTo(40, 24);
+    ctx.lineTo(34, 38);
+    ctx.closePath();
+    ctx.fill();
+
+    // Vibrant Magenta Highlight Ridge
+    ctx.fillStyle = '#f43f5e';
+    ctx.fillRect(20, 14, 12, 3);
+    ctx.fillRect(20, 31, 12, 3);
+    ctx.fillStyle = '#fda4af';
+    ctx.fillRect(24, 15, 6, 1);
+
+    // Dithered Shading on Lower Mantis Wing
+    ctx.fillStyle = '#4c0519';
+    for (let x = 18; x <= 34; x += 4) {
+      ctx.fillRect(x, 34, 2, 2);
+    }
+
+    // Razor Pincer Blades (Bio-Metallic Sheen)
+    ctx.strokeStyle = '#e11d48';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(10, 24); ctx.lineTo(2, 10);
+    ctx.moveTo(10, 24); ctx.lineTo(2, 38);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(10, 23); ctx.lineTo(3, 11);
+    ctx.stroke();
+
+    // Central Bioluminescent Optic Core
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.arc(22, 24, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(20, 24, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(19, 23, 2, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateEnemyBioBehemothTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 72;
+    canvas.height = 72;
+    const ctx = canvas.getContext('2d')!;
+
+    // Biomechanical Heavy Fortress (16-bit R-Type / Metroid style)
+    // Dark Exoskeleton Silhouette
+    ctx.fillStyle = '#1e1b4b';
+    ctx.beginPath();
+    ctx.arc(36, 36, 34, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Deep Violet Carapace
+    ctx.fillStyle = '#3b0764';
+    ctx.beginPath();
+    ctx.arc(36, 36, 31, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Heavy Bio Armor Plates
+    ctx.fillStyle = '#6b21a8';
+    ctx.fillRect(16, 12, 40, 48);
+
+    // Exposed Muscular Core Tissue (Crimson / Magenta)
+    ctx.fillStyle = '#9d174d';
+    ctx.beginPath();
+    ctx.ellipse(30, 36, 12, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#be123c';
+    ctx.beginPath();
+    ctx.ellipse(28, 36, 8, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bioluminescent Emerald Acid Chambers (Top and Bottom)
+    ctx.fillStyle = '#065f46';
+    ctx.beginPath();
+    ctx.arc(26, 22, 9, 0, Math.PI * 2);
+    ctx.arc(26, 50, 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(26, 22, 6, 0, Math.PI * 2);
+    ctx.arc(26, 50, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#a7f3d0';
+    ctx.fillRect(24, 20, 3, 3);
+    ctx.fillRect(24, 48, 3, 3);
+
+    // Dithered 16-bit Shading
+    ctx.fillStyle = '#1e1b4b';
+    for (let x = 20; x <= 50; x += 4) {
+      for (let y = 46; y <= 58; y += 4) {
+        if ((x + y) % 8 === 0) ctx.fillRect(x, y, 2, 2);
+      }
+    }
+
+    // Biomechanical Reinforcement Struts & Ribs
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(20, 14, 32, 44);
+
+    ctx.strokeStyle = '#7dd3fc';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(20, 28); ctx.lineTo(52, 28);
+    ctx.moveTo(20, 44); ctx.lineTo(52, 44);
+    ctx.stroke();
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateBioBullet() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 20;
+    canvas.height = 20;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Biomechanical Corrosive Plasma Orb
+    // Outer acid corona
+    const acidGrad = ctx.createRadialGradient(10, 10, 1, 10, 10, 10);
+    acidGrad.addColorStop(0, '#fef08a');
+    acidGrad.addColorStop(0.3, '#a3e635');
+    acidGrad.addColorStop(0.7, '#10b981');
+    acidGrad.addColorStop(1, 'rgba(6, 78, 59, 0)');
+    ctx.fillStyle = acidGrad;
+    ctx.beginPath();
+    ctx.arc(10, 10, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dense Bio Nucleus
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(10, 10, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hot Specular White Core
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(8.5, 8.5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Orbiting bio-plasma sparks
+    ctx.fillStyle = '#a3e635';
+    ctx.fillRect(3, 9, 2, 2);
+    ctx.fillRect(15, 9, 2, 2);
+    ctx.fillRect(9, 3, 2, 2);
+    ctx.fillRect(9, 15, 2, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateCavernFarLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    // 1. Deep Moon Basalt Rock Wall Background (Authentic 16-bit Slate & Charcoal Tones)
+    ctx.fillStyle = '#060910';
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Subtle dithered moon rock texture layers (#0f1522, #182234)
+    ctx.fillStyle = '#0f1522';
+    for (let x = 0; x < 800; x += 8) {
+      for (let y = 0; y < 600; y += 8) {
+        if ((x / 8 + y / 8) % 2 === 0) {
+          ctx.fillRect(x, y, 8, 8);
+        }
+      }
+    }
+
+    // Horizontal rock strata fault lines
+    ctx.fillStyle = '#030508';
+    for (let y = 60; y < 600; y += 80) {
+      ctx.fillRect(0, y, 800, 4);
+    }
+
+    // 2. Deep Background Moon Wall Craters (Authentic 16-bit Pixel Shading)
+    const craters = [
+      { x: 140, y: 190, r: 45 },
+      { x: 390, y: 310, r: 60 },
+      { x: 670, y: 230, r: 50 },
+      { x: 260, y: 440, r: 35 },
+      { x: 530, y: 150, r: 40 },
+      { x: 740, y: 470, r: 55 }
+    ];
+
+    for (const c of craters) {
+      ctx.fillStyle = '#020407';
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r + 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#162030';
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#080c14';
+      ctx.beginPath();
+      ctx.arc(c.x - c.r * 0.2, c.y - c.r * 0.2, c.r * 0.75, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#3b4c68';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r - 2, Math.PI * 0.75, Math.PI * 1.75);
+      ctx.stroke();
+    }
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateCavernLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    // Transparent background so Far layer shows through
+    ctx.clearRect(0, 0, 800, 600);
+
+    // Jagged Foreground Moon Rock Ceilings & Floors (Solid Basalt Rock Formations - Perfect Tile Match)
+    const drawMoonRockFormations = (isCeiling: boolean) => {
+      const baseY = isCeiling ? 0 : 600;
+      const numPoints = 33; // 25px step
+      const step = 800 / (numPoints - 1);
+      const points: { x: number; y: number }[] = [];
+
+      for (let i = 0; i < numPoints; i++) {
+        const x = i * step;
+        const angle = (i / (numPoints - 1)) * Math.PI * 2 * 3;
+        let h = 80 + Math.sin(angle) * 20 + Math.cos(angle * 2) * 10;
+        if (i === 0 || i === numPoints - 1) h = 85; // Seamless tile match
+        const y = isCeiling ? h : 600 - h;
+        points.push({ x, y });
+      }
+
+      // Base darkest rock layer
+      ctx.fillStyle = '#080b12';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (const p of points) ctx.lineTo(p.x, p.y);
+      ctx.lineTo(800, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Main Basalt Rock body
+      ctx.fillStyle = '#16202e';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (const p of points) {
+        const offset = isCeiling ? -12 : 12;
+        ctx.lineTo(p.x, p.y + offset);
+      }
+      ctx.lineTo(800, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Midtone Moon Rock
+      ctx.fillStyle = '#283850';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (const p of points) {
+        const offset = isCeiling ? -24 : 24;
+        ctx.lineTo(p.x, p.y + offset);
+      }
+      ctx.lineTo(800, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Highlighted Ridge Lines along Peaks (NeoGeo Style Sharp Chisel Lines)
+      ctx.strokeStyle = '#546888';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i < points.length - 1; i++) {
+        ctx.moveTo(points[i].x, points[i].y);
+        ctx.lineTo(points[i + 1].x, points[i + 1].y);
+      }
+      ctx.stroke();
+
+      // Pixel highlights on rock peaks
+      ctx.fillStyle = '#849cb8';
+      for (let i = 0; i < points.length; i++) {
+        if (i % 2 === 0) {
+          const p = points[i];
+          const py = p.y + (isCeiling ? 6 : -6);
+          ctx.fillRect(p.x - 3, py - 3, 6, 6);
+        }
+      }
+    };
+
+    drawMoonRockFormations(true);  // Ceiling
+    drawMoonRockFormations(false); // Floor
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateCavernEntryLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.clearRect(0, 0, 800, 600);
+
+    // 1. Draw Floor (isCeiling = false) - standard cavern floor
+    const drawMoonRockFloor = () => {
+      const baseY = 600;
+      const numPoints = 33; // 25px step
+      const step = 800 / (numPoints - 1);
+      const points: { x: number; y: number }[] = [];
+
+      for (let i = 0; i < numPoints; i++) {
+        const x = i * step;
+        const angle = (i / (numPoints - 1)) * Math.PI * 2 * 3;
+        let h = 80 + Math.sin(angle) * 20 + Math.cos(angle * 2) * 10;
+        if (i === 0 || i === numPoints - 1) h = 85; // Seamless tile match
+        const y = 600 - h;
+        points.push({ x, y });
+      }
+
+      ctx.fillStyle = '#080b12';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (const p of points) ctx.lineTo(p.x, p.y);
+      ctx.lineTo(800, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#16202e';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (const p of points) {
+        ctx.lineTo(p.x, p.y + 12);
+      }
+      ctx.lineTo(800, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#283850';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (const p of points) {
+        ctx.lineTo(p.x, p.y + 24);
+      }
+      ctx.lineTo(800, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#546888';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i < points.length - 1; i++) {
+        ctx.moveTo(points[i].x, points[i].y);
+        ctx.lineTo(points[i + 1].x, points[i + 1].y);
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = '#849cb8';
+      for (let i = 0; i < points.length; i++) {
+        if (i % 2 === 0) {
+          const p = points[i];
+          ctx.fillRect(p.x - 3, p.y - 9, 6, 6);
+        }
+      }
+    };
+
+    drawMoonRockFloor();
+
+    // 2. Draw Ceiling (isCeiling = true) WITH ENTRY GAP from x = 110 to 330 for ceiling blast door
+    const drawMoonRockCeilingWithGap = () => {
+      const leftPoints: { x: number; y: number }[] = [
+        { x: 0, y: 85 },
+        { x: 25, y: 80 },
+        { x: 50, y: 90 },
+        { x: 75, y: 82 },
+        { x: 100, y: 95 },
+        { x: 110, y: 110 }
+      ];
+
+      const rightPoints: { x: number; y: number }[] = [
+        { x: 330, y: 110 },
+        { x: 340, y: 95 },
+        { x: 375, y: 82 },
+        { x: 400, y: 90 },
+        { x: 425, y: 78 }
+      ];
+
+      const step = 800 / 32;
+      for (let i = 18; i <= 32; i++) {
+        const x = i * step;
+        const angle = (i / 32) * Math.PI * 2 * 3;
+        let h = 80 + Math.sin(angle) * 20 + Math.cos(angle * 2) * 10;
+        if (i === 32) h = 85;
+        rightPoints.push({ x, y: h });
+      }
+
+      const drawBlock = (points: { x: number; y: number }[], isLeft: boolean) => {
+        ctx.fillStyle = '#080b12';
+        ctx.beginPath();
+        if (isLeft) {
+          ctx.moveTo(0, 0);
+          for (const p of points) ctx.lineTo(p.x, p.y);
+          ctx.lineTo(110, 0);
+        } else {
+          ctx.moveTo(330, 0);
+          for (const p of points) ctx.lineTo(p.x, p.y);
+          ctx.lineTo(800, 0);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#16202e';
+        ctx.beginPath();
+        if (isLeft) {
+          ctx.moveTo(0, 0);
+          for (const p of points) ctx.lineTo(p.x, p.y - 10);
+          ctx.lineTo(102, 0);
+        } else {
+          ctx.moveTo(338, 0);
+          for (const p of points) ctx.lineTo(p.x, p.y - 10);
+          ctx.lineTo(800, 0);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#283850';
+        ctx.beginPath();
+        if (isLeft) {
+          ctx.moveTo(0, 0);
+          for (const p of points) ctx.lineTo(p.x, p.y - 20);
+          ctx.lineTo(94, 0);
+        } else {
+          ctx.moveTo(346, 0);
+          for (const p of points) ctx.lineTo(p.x, p.y - 20);
+          ctx.lineTo(800, 0);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#546888';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let i = 0; i < points.length - 1; i++) {
+          ctx.moveTo(points[i].x, points[i].y);
+          ctx.lineTo(points[i + 1].x, points[i + 1].y);
+        }
+        ctx.stroke();
+
+        ctx.beginPath();
+        if (isLeft) {
+          ctx.moveTo(110, 0);
+          ctx.lineTo(110, 110);
+        } else {
+          ctx.moveTo(330, 0);
+          ctx.lineTo(330, 110);
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = '#849cb8';
+        for (let i = 0; i < points.length; i++) {
+          if (i % 2 === 0) {
+            const p = points[i];
+            ctx.fillRect(p.x - 3, p.y + 3, 6, 6);
+          }
+        }
+      };
+
+      drawBlock(leftPoints, true);
+      drawBlock(rightPoints, false);
+    };
+
+    drawMoonRockCeilingWithGap();
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateCavernToFactoryFarLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    // 1. Far Background Wall Transition: Moon Basalt Rock (left) -> Steel Industrial Vault (right)
+    const bgGrad = ctx.createLinearGradient(0, 0, 800, 0);
+    bgGrad.addColorStop(0, '#060910');
+    bgGrad.addColorStop(0.35, '#0b111e');
+    bgGrad.addColorStop(1, '#0e1626');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Industrial Steel Plates & Rivets appearing on right half (X > 320)
+    ctx.fillStyle = '#1c293d';
+    for (let x = 320; x < 800; x += 100) {
+      ctx.fillRect(x, 0, 92, 600);
+    }
+    ctx.strokeStyle = '#32445e';
+    ctx.lineWidth = 3;
+    for (let x = 320; x <= 800; x += 100) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 600);
+      ctx.stroke();
+
+      ctx.fillStyle = '#526685';
+      for (let y = 20; y < 600; y += 40) {
+        ctx.fillRect(x - 3, y - 3, 6, 6);
+      }
+    }
+
+    // Distant background ventilation fan on right side
+    const cx = 600, cy = 300, cr = 65;
+    ctx.fillStyle = '#060a12';
+    ctx.beginPath();
+    ctx.arc(cx, cy, cr + 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#131d2b';
+    ctx.beginPath();
+    ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Fan blades
+    ctx.fillStyle = '#2d3e58';
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, cr - 6, a, a + 0.4);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateCavernToFactoryLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    // Transparent background
+    ctx.clearRect(0, 0, 800, 600);
+
+    // Hazard Warning Stripes Girders entering from right
+    ctx.fillStyle = '#2d3e58';
+    ctx.fillRect(320, 80, 480, 24);
+    ctx.fillRect(320, 496, 480, 24);
+
+    ctx.fillStyle = '#eab308';
+    for (let x = 330; x < 800; x += 36) {
+      ctx.beginPath();
+      ctx.moveTo(x, 80);
+      ctx.lineTo(x + 12, 80);
+      ctx.lineTo(x + 6, 104);
+      ctx.lineTo(x - 6, 104);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(x, 496);
+      ctx.lineTo(x + 12, 496);
+      ctx.lineTo(x + 6, 520);
+      ctx.lineTo(x - 6, 520);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Cavern Rock Mouth Widening Arch
+    // Left side (X=0): Ceiling height = 85px, Floor height = 85px (Y=515)
+    // Right side (X=800): Ceiling height = 40px, Floor height = 40px (Y=560)
+    const drawWideningArch = (isCeiling: boolean) => {
+      const baseY = isCeiling ? 0 : 600;
+      const numPoints = 33;
+      const step = 800 / (numPoints - 1);
+      const points: { x: number; y: number }[] = [];
+
+      for (let i = 0; i < numPoints; i++) {
+        const x = i * step;
+        const progress = i / (numPoints - 1);
+        const baseH = (1 - progress) * 85 + progress * 40;
+        const jagged = Math.sin(progress * Math.PI * 4) * 8 * (1 - progress * 0.7);
+        const h = baseH + jagged;
+        const y = isCeiling ? h : 600 - h;
+        points.push({ x, y });
+      }
+
+      ctx.fillStyle = '#080b12';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (const p of points) ctx.lineTo(p.x, p.y);
+      ctx.lineTo(800, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#16202e';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (const p of points) {
+        const offset = isCeiling ? -10 : 10;
+        ctx.lineTo(p.x, p.y + offset);
+      }
+      ctx.lineTo(800, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#283850';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (const p of points) {
+        const offset = isCeiling ? -20 : 20;
+        ctx.lineTo(p.x, p.y + offset);
+      }
+      ctx.lineTo(800, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#546888';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i < points.length - 1; i++) {
+        ctx.moveTo(points[i].x, points[i].y);
+        ctx.lineTo(points[i + 1].x, points[i + 1].y);
+      }
+      ctx.stroke();
+    };
+
+    drawWideningArch(true);
+    drawWideningArch(false);
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateFactoryFarLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    // Distant Industrial Steel Vault Background
+    ctx.fillStyle = '#0e1626';
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Steel Plate Grid with Double Rivets
+    ctx.fillStyle = '#1c293d';
+    for (let x = 0; x < 800; x += 100) {
+      ctx.fillRect(x, 0, 92, 600);
+    }
+
+    ctx.strokeStyle = '#32445e';
+    ctx.lineWidth = 4;
+    for (let x = 0; x <= 800; x += 100) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 600);
+      ctx.stroke();
+
+      ctx.fillStyle = '#526685';
+      for (let y = 20; y < 600; y += 40) {
+        ctx.fillRect(x - 3, y - 3, 6, 6);
+      }
+    }
+
+    // Industrial Ventilation Fans (X = 200, 600)
+    const fans = [200, 600];
+    for (const fx of fans) {
+      const fy = 300, fr = 70;
+      ctx.fillStyle = '#060a12';
+      ctx.beginPath();
+      ctx.arc(fx, fy, fr + 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#131d2b';
+      ctx.beginPath();
+      ctx.arc(fx, fy, fr, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#2d3e58';
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+        ctx.beginPath();
+        ctx.moveTo(fx, fy);
+        ctx.arc(fx, fy, fr - 8, a, a + 0.35);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Fan hub & wire mesh
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(fx, fy, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(fx, fy, 12, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Horizontal Pressurized Steam Pipes
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(0, 180, 800, 16);
+    ctx.fillRect(0, 400, 800, 16);
+
+    ctx.fillStyle = '#f59e0b';
+    for (let x = 50; x < 800; x += 200) {
+      ctx.fillRect(x, 176, 12, 24);
+      ctx.fillRect(x, 396, 12, 24);
+    }
+
+    // Glowing 16-bit LED Status Panels
+    const leds = ['#ef4444', '#22c55e', '#f59e0b', '#38bdf8'];
+    for (let x = 100; x < 800; x += 200) {
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(x - 20, 240, 40, 20);
+
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = leds[i];
+        ctx.fillRect(x - 16 + i * 8, 246, 6, 8);
+      }
+    }
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateFactoryLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    // Transparent background so Far layer shows through
+    ctx.clearRect(0, 0, 800, 600);
+
+    // Top and Bottom Heavy Industrial Girders (40px height)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, 800, 40);
+    ctx.fillRect(0, 560, 800, 40);
+
+    // Hazard Stripes on top and bottom girders
+    ctx.fillStyle = '#eab308';
+    for (let x = 0; x < 800; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + 16, 0);
+      ctx.lineTo(x + 8, 40);
+      ctx.lineTo(x - 8, 40);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(x, 560);
+      ctx.lineTo(x + 16, 560);
+      ctx.lineTo(x + 8, 600);
+      ctx.lineTo(x - 8, 600);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 0, 800, 40);
+    ctx.strokeRect(0, 560, 800, 40);
+
+    // Alien Vessel Assembly Pods / Glass Incubation Chambers (X = 140, 380, 620)
+    for (const x of [140, 380, 620]) {
+      // Chrome Hydraulic Pistons
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(x - 6, 40, 12, 140);
+      ctx.fillRect(x - 6, 420, 12, 140);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(x - 2, 40, 4, 140);
+      ctx.fillRect(x - 2, 420, 4, 140);
+
+      // Pod Frame
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(x - 28, 180, 56, 240);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(x - 22, 186, 44, 228);
+
+      // Bioluminescent Plasma Fluid
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.75)';
+      ctx.fillRect(x - 18, 192, 36, 216);
+
+      // Unfinished Alien Bio-Ship Hull in Pod
+      ctx.fillStyle = '#064e3b';
+      ctx.beginPath();
+      ctx.ellipse(x, 300, 14, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Glowing alien core eye
+      ctx.fillStyle = '#a7f3d0';
+      ctx.beginPath();
+      ctx.arc(x, 290, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Glass shine highlight
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.fillRect(x - 16, 192, 5, 216);
+    }
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateFactoryToSuperstructureFarLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    const bgGrad = ctx.createLinearGradient(0, 0, 800, 0);
+    bgGrad.addColorStop(0, '#0e1626');
+    bgGrad.addColorStop(0.5, '#1e1b4b');
+    bgGrad.addColorStop(1, '#2e1065');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 800, 600);
+
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)';
+    ctx.lineWidth = 2;
+    for (let x = 0; x <= 800; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 600);
+      ctx.stroke();
+    }
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateFactoryToSuperstructureLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.clearRect(0, 0, 800, 600);
+
+    ctx.fillStyle = '#1e1b4b';
+    ctx.fillRect(0, 0, 800, 40);
+    ctx.fillRect(0, 560, 800, 40);
+
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 0, 800, 40);
+    ctx.strokeRect(0, 560, 800, 40);
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateSuperstructureFarLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    const grad = ctx.createRadialGradient(400, 300, 50, 400, 300, 500);
+    grad.addColorStop(0, '#2e1065');
+    grad.addColorStop(0.6, '#1e1b4b');
+    grad.addColorStop(1, '#090514');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 800, 600);
+
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)';
+    ctx.lineWidth = 2;
+    for (let x = 0; x <= 800; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 600);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= 600; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(800, y);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#f43f5e';
+    for (let x = 80; x < 800; x += 160) {
+      for (let y = 80; y < 600; y += 160) {
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fecdd3';
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f43f5e';
+      }
+    }
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateSuperstructureLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.clearRect(0, 0, 800, 600);
+
+    ctx.fillStyle = '#1e1b4b';
+    ctx.fillRect(0, 0, 800, 40);
+    ctx.fillRect(0, 560, 800, 40);
+
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    for (let x = 0; x < 800; x += 80) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + 40, 40);
+      ctx.lineTo(x + 80, 0);
+
+      ctx.moveTo(x, 600);
+      ctx.lineTo(x + 40, 560);
+      ctx.lineTo(x + 80, 600);
+    }
+    ctx.stroke();
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateBullet(color: number) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 28;
+    canvas.height = 14;
+    const ctx = canvas.getContext('2d')!;
+    
+    const hex = '#' + color.toString(16).padStart(6, '0');
+
+    // 1. High-Contrast Outer Silhouette Shadow (Guarantees visibility over light backgrounds)
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.moveTo(27, 7);
+    ctx.lineTo(8, 0);
+    ctx.lineTo(0, 7);
+    ctx.lineTo(8, 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Tapered Plasma Energy Aura
+    const grad = ctx.createLinearGradient(0, 7, 26, 7);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(0.25, hex);
+    grad.addColorStop(0.75, '#ffffff');
+    grad.addColorStop(1, hex);
+
+    ctx.fillStyle = hex;
+    ctx.beginPath();
+    ctx.moveTo(26, 7);
+    ctx.lineTo(9, 1.5);
+    ctx.lineTo(2, 7);
+    ctx.lineTo(9, 12.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. High-Energy Beam Spindle
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(25, 7);
+    ctx.lineTo(11, 3);
+    ctx.lineTo(4, 7);
+    ctx.lineTo(11, 11);
+    ctx.closePath();
+    ctx.fill();
+
+    // 4. White-Hot Piercing Spine
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(24, 7);
+    ctx.lineTo(13, 4.5);
+    ctx.lineTo(7, 7);
+    ctx.lineTo(13, 9.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Specular Diamond Glint
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(19, 6, 5, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateEnemyBullet() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 26;
+    canvas.height = 18;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit High-Contrast Arcade Enemy Orb / Needle (Cave / Raiden style)
+    // 1. Deep Silhouette Outer Edge (High Contrast against stars, explosions & dust)
+    ctx.fillStyle = '#050209';
+    ctx.beginPath();
+    ctx.ellipse(13, 9, 12, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. High-Voltage Warning Aura (Neon Crimson / Hot Pink)
+    const auraGrad = ctx.createRadialGradient(13, 9, 2, 13, 9, 10.5);
+    auraGrad.addColorStop(0, '#ffffff');
+    auraGrad.addColorStop(0.2, '#fde047'); // Radiant Electric Yellow
+    auraGrad.addColorStop(0.5, '#f97316'); // Blazing Amber Orange
+    auraGrad.addColorStop(0.85, '#e11d48'); // Neon Rose Red
+    auraGrad.addColorStop(1, '#881337'); // Dark Crimson Contour
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.ellipse(13, 9, 10.5, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Dense Inner Kinetic Core
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.ellipse(13, 9, 6.5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. White-Hot Intense Specular Spark
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(12.5, 8.5, 3.5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Directional Energy Tip
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(4, 8, 3, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateParticle() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 16;
+    canvas.height = 16;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-bit arcade radiant spark with multi-tier diamond facets
+    // Outer energy corona
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(16, 8);
+    ctx.lineTo(8, 16);
+    ctx.lineTo(0, 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Mid diamond beam
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.beginPath();
+    ctx.moveTo(8, 2);
+    ctx.lineTo(14, 8);
+    ctx.lineTo(8, 14);
+    ctx.lineTo(2, 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Secondary cross flares
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillRect(7, 1, 2, 14);
+    ctx.fillRect(1, 7, 14, 2);
+
+    // Specular pure white core
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(6, 6, 4, 4);
+    ctx.fillRect(7, 5, 2, 6);
+    ctx.fillRect(5, 7, 6, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateStar() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 12;
+    canvas.height = 12;
+    const ctx = canvas.getContext('2d')!;
+    
+    // 16-bit twinkling space diamond star
+    // Distant twinkle halo
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.35)';
+    ctx.fillRect(5, 1, 2, 10);
+    ctx.fillRect(1, 5, 10, 2);
+
+    // Mid cross beams
+    ctx.fillStyle = 'rgba(224, 242, 254, 0.85)';
+    ctx.fillRect(5, 3, 2, 6);
+    ctx.fillRect(3, 5, 6, 2);
+
+    // Diamond core
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(4, 4, 4, 4);
+    ctx.fillRect(5, 3, 2, 6);
+    ctx.fillRect(3, 5, 6, 2);
+
+    // Pure specular center glint
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(5, 5, 2, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateMountains() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    
+    ctx.clearRect(0, 0, 1024, 512);
+
+    // Realistic Distant Horizon & Foothill Rolling Ridges (Low-lying Earth profile, y: 440-512)
+    const pal = {
+      farPeakLit: '#243044',
+      farPeakShade: '#151d2a',
+      farPeakBase: '#0c121c',
+      midHillLit: '#1e2d40',
+      midHillShade: '#121c2a',
+      midHillBase: '#0a1018',
+      nearHillRidge: '#080d15',
+      nearHillDetail: '#101824'
+    };
+
+    // 1. Far Distant Rolling Horizon Ridge (Seamless 1024 Periodic Curve, Low Earth Profile)
+    const getFarY = (x: number) => {
+      const a = (x / 1024) * Math.PI * 2;
+      return 438 + Math.sin(a) * 14 + Math.cos(a * 3) * 8 + Math.sin(a * 7) * 4;
+    };
+
+    // Far Ridge Silhouette Base
+    ctx.fillStyle = pal.farPeakBase;
+    ctx.beginPath();
+    ctx.moveTo(0, 512);
+    for (let x = 0; x <= 1024; x += 4) {
+      ctx.lineTo(x, getFarY(x));
+    }
+    ctx.lineTo(1024, 512);
+    ctx.closePath();
+    ctx.fill();
+
+    // Far Ridge Subdued Lighting
+    for (let x = 0; x < 1024; x += 4) {
+      const y1 = getFarY(x);
+      const y2 = getFarY((x + 4) % 1024);
+      const slope = y2 - y1;
+      if (slope < -0.1) {
+        ctx.fillStyle = pal.farPeakLit;
+        ctx.fillRect(x, y1, 4, 512 - y1);
+      } else {
+        ctx.fillStyle = pal.farPeakShade;
+        ctx.fillRect(x, y1, 4, 512 - y1);
+      }
+    }
+
+    // 2. Midground Low Rolling Foothills (Seamless 1024)
+    const getMidY = (x: number) => {
+      const a = (x / 1024) * Math.PI * 2;
+      return 460 + Math.sin(a * 2) * 16 + Math.cos(a * 5) * 9 + Math.sin(a * 11) * 5;
+    };
+
+    // Mid Ridge Base
+    ctx.fillStyle = pal.midHillBase;
+    ctx.beginPath();
+    ctx.moveTo(0, 512);
+    for (let x = 0; x <= 1024; x += 4) {
+      ctx.lineTo(x, getMidY(x));
+    }
+    ctx.lineTo(1024, 512);
+    ctx.closePath();
+    ctx.fill();
+
+    // Mid Ridge Facet Shading
+    for (let x = 0; x < 1024; x += 4) {
+      const y1 = getMidY(x);
+      const y2 = getMidY((x + 4) % 1024);
+      const slope = y2 - y1;
+
+      if (slope < -0.1) {
+        ctx.fillStyle = pal.midHillLit;
+        ctx.fillRect(x, y1, 4, 512 - y1);
+      } else {
+        ctx.fillStyle = pal.midHillShade;
+        ctx.fillRect(x, y1, 4, 512 - y1);
+      }
+    }
+
+    // 3. Near Lowland Treeline & Rolling Terrain Silhouette (Near Horizon)
+    const getForestY = (x: number) => {
+      const a = (x / 1024) * Math.PI * 2;
+      return 482 + Math.sin(a * 3) * 8 + Math.cos(a * 7) * 5 + Math.sin(a * 17) * 2;
+    };
+
+    ctx.fillStyle = pal.nearHillRidge;
+    ctx.beginPath();
+    ctx.moveTo(0, 512);
+    for (let x = 0; x <= 1024; x += 4) {
+      ctx.lineTo(x, getForestY(x));
+    }
+    ctx.lineTo(1024, 512);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tree / Horizon Micro-Ridge Details
+    for (let x = 0; x < 1024; x += 4) {
+      const fy = getForestY(x);
+      ctx.fillStyle = pal.nearHillDetail;
+      ctx.beginPath();
+      ctx.moveTo(x + 2, fy - 3);
+      ctx.lineTo(x, fy);
+      ctx.lineTo(x + 4, fy);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 4. Subtle Earth Horizon Mist
+    const mistGrad = ctx.createLinearGradient(0, 465, 0, 512);
+    mistGrad.addColorStop(0, 'rgba(12, 18, 28, 0)');
+    mistGrad.addColorStop(0.6, 'rgba(12, 18, 28, 0.3)');
+    mistGrad.addColorStop(1, 'rgba(8, 12, 18, 0.6)');
+    ctx.fillStyle = mistGrad;
+    ctx.fillRect(0, 465, 1024, 47);
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateEarthTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.clearRect(0, 0, 512, 512);
+
+    const size = 512;
+    const center = 256;
+    const radius = 216;
+    const px = 2; // 2px micro-pixel blocks for ultra-crisp 16/32-bit arcade pixel art
+
+    // Palette Definition for Blue Marble Earth
+    const pal = {
+      spaceBg: '#02040a',
+      // Rayleigh Scattering Atmosphere
+      haloOuter: 'rgba(56, 189, 248, 0.55)',
+      haloMid: 'rgba(14, 165, 233, 0.35)',
+      haloInner: 'rgba(2, 132, 199, 0.15)',
+      // Oceans
+      oceanDeepTrench: '#081026',
+      oceanAbyss: '#0c1b40',
+      oceanNavy: '#11295c',
+      oceanMid: '#164282',
+      oceanAzure: '#1d5fa8',
+      oceanLight: '#0284c7',
+      oceanTropical: '#0ea5e9',
+      oceanShelf: '#38bdf8',
+      oceanReef: '#7dd3fc',
+      oceanLagoon: '#a5f3fc',
+      // Polar Ice & Glaciers
+      iceWhite: '#ffffff',
+      iceHighlight: '#f8fafc',
+      iceGlacierBlue: '#bae6fd',
+      iceShadow: '#64748b',
+      // Land Biomes
+      jungleDeep: '#052e16',
+      jungleLush: '#0f4a24',
+      forestGreen: '#15803d',
+      grassland: '#22c55e',
+      savannahOchre: '#65a30d',
+      aridPlateau: '#a16207',
+      desertDark: '#78350f',
+      desertMid: '#92400e',
+      desertSand: '#d97706',
+      desertDuneGold: '#f59e0b',
+      desertSunlit: '#fbbf24',
+      // Mountains & Alpine
+      mountainDark: '#334155',
+      mountainSlate: '#475569',
+      mountainRock: '#64748b',
+      mountainPeakSnow: '#ffffff',
+      // Clouds & Weather Systems
+      cloudPureWhite: '#ffffff',
+      cloudBright: '#f8fafc',
+      cloudMid: '#e2e8f0',
+      cloudUnderShadow: '#94a3b8',
+      cloudDeepShadow: '#475569',
+      cloudGroundShadow: 'rgba(5, 10, 25, 0.55)',
+      // Nightside City Lights
+      cityGold: '#fef08a',
+      cityAmber: '#f59e0b',
+      cityOrange: '#ea580c',
+      cityRed: '#ef4444',
+      cityWhite: '#ffffff'
+    };
+
+    // 1. Atmosphere Rayleigh Scattering Limb Glow (Outer Aura)
+    const atmGlow = ctx.createRadialGradient(center - 24, center - 24, radius - 8, center, center, radius + 32);
+    atmGlow.addColorStop(0, 'rgba(56, 189, 248, 0.85)');
+    atmGlow.addColorStop(0.35, 'rgba(14, 165, 233, 0.45)');
+    atmGlow.addColorStop(0.7, 'rgba(2, 132, 199, 0.18)');
+    atmGlow.addColorStop(0.95, 'rgba(3, 105, 161, 0.05)');
+    atmGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+    ctx.fillStyle = atmGlow;
+    ctx.beginPath();
+    ctx.arc(center, center, radius + 32, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Sunlight Direction Vector (Sun positioned high to the upper-left)
+    const lx = -0.58;
+    const ly = -0.50;
+    const lz = 0.64;
+
+    // Specular Sun Glint Half-Vector
+    const vx = 0;
+    const vy = 0;
+    const vz = 1;
+    let hx = lx + vx;
+    let hy = ly + vy;
+    let hz = lz + vz;
+    const hLen = Math.sqrt(hx * hx + hy * hy + hz * hz);
+    hx /= hLen;
+    hy /= hLen;
+    hz /= hLen;
+
+    // Geographic Continent Topology Function (Maps 3D sphere coordinate to real Earth geography)
+    const getGeography = (nx: number, ny: number, nz: number) => {
+      // Longitude: -PI to +PI, Latitude: -PI/2 to +PI/2
+      const lat = Math.asin(Math.max(-1, Math.min(1, ny)));
+      const lon = Math.atan2(nx, nz);
+
+      // Polar Ice Test
+      if (ny < -0.82) return { type: 'ice', elevation: 1.0, isLand: true, cityChance: 0 };
+      if (ny > 0.84) return { type: 'ice', elevation: 1.0, isLand: true, cityChance: 0 };
+
+      // Base Noise for Organic Coastline Detail
+      const n1 = Math.sin(lon * 3.5 + 0.3) * Math.cos(lat * 3.0);
+      const n2 = Math.sin(lon * 7.2 - 0.7) * Math.sin(lat * 5.4 + 0.2);
+      const n3 = Math.cos(lon * 13.0 + lat * 9.5) * 0.5;
+      const microNoise = n1 * 0.5 + n2 * 0.3 + n3 * 0.2;
+
+      // Realistic Continental Shapes
+      // 1. Americas (Western Hemisphere: lon roughly -2.4 to -0.6)
+      // North America
+      const distNAmerica = Math.sqrt(Math.pow(lon + 1.6, 2) * 1.0 + Math.pow(lat + 0.55, 2) * 2.2);
+      // South America
+      const distSAmerica = Math.sqrt(Math.pow(lon + 1.1, 2) * 1.2 + Math.pow(lat - 0.32, 2) * 2.0);
+      // Central America bridge
+      const distCAmerica = Math.sqrt(Math.pow(lon + 1.45, 2) * 3.0 + Math.pow(lat - 0.12, 2) * 4.0);
+
+      // 2. Eurasia & Africa (Eastern Hemisphere: lon roughly -0.3 to +2.5)
+      // Africa
+      const distAfrica = Math.sqrt(Math.pow(lon - 0.35, 2) * 1.1 + Math.pow(lat - 0.08, 2) * 1.5);
+      // Europe
+      const distEurope = Math.sqrt(Math.pow(lon - 0.25, 2) * 1.4 + Math.pow(lat + 0.68, 2) * 2.5);
+      // Middle East
+      const distMideast = Math.sqrt(Math.pow(lon - 0.85, 2) * 1.5 + Math.pow(lat + 0.32, 2) * 2.0);
+      // Asia & India
+      const distIndia = Math.sqrt(Math.pow(lon - 1.45, 2) * 2.0 + Math.pow(lat + 0.22, 2) * 2.5);
+      const distAsia = Math.sqrt(Math.pow(lon - 1.75, 2) * 0.9 + Math.pow(lat + 0.65, 2) * 1.6);
+      // Australia
+      const distAustralia = Math.sqrt(Math.pow(lon - 2.35, 2) * 1.3 + Math.pow(lat - 0.45, 2) * 2.0);
+
+      let landScore = microNoise * 0.38 - 0.38;
+
+      if (distNAmerica < 0.82) landScore += (0.82 - distNAmerica) * 1.5;
+      if (distSAmerica < 0.72) landScore += (0.72 - distSAmerica) * 1.6;
+      if (distCAmerica < 0.45) landScore += (0.45 - distCAmerica) * 1.2;
+      if (distAfrica < 0.88) landScore += (0.88 - distAfrica) * 1.6;
+      if (distEurope < 0.65) landScore += (0.65 - distEurope) * 1.4;
+      if (distMideast < 0.55) landScore += (0.55 - distMideast) * 1.3;
+      if (distIndia < 0.52) landScore += (0.52 - distIndia) * 1.4;
+      if (distAsia < 0.95) landScore += (0.95 - distAsia) * 1.4;
+      if (distAustralia < 0.62) landScore += (0.62 - distAustralia) * 1.5;
+
+      const isLand = landScore > 0.08;
+      const isShelf = !isLand && landScore > -0.12;
+
+      let biome = 'ocean';
+      let cityChance = 0;
+
+      if (isLand) {
+        // Biome categorization
+        if (lat > -0.05 && lat < 0.42 && (distAfrica < 0.8 || distMideast < 0.52 || distAustralia < 0.55)) {
+          biome = 'desert';
+          cityChance = 0.15;
+        } else if (Math.abs(lat) > 0.6 || (microNoise > 0.32 && landScore > 0.35)) {
+          biome = 'mountain';
+          cityChance = 0.08;
+        } else if (Math.abs(lat) < 0.18) {
+          biome = 'jungle';
+          cityChance = 0.2;
+        } else {
+          biome = 'temperate';
+          cityChance = 0.55;
+        }
+      } else if (isShelf) {
+        biome = 'shelf';
+      }
+
+      return { type: biome, elevation: landScore, isLand, isShelf, cityChance };
+    };
+
+    // Realistic Atmospheric Cloud System Sampler
+    const getClouds = (nx: number, ny: number, nz: number) => {
+      const lat = Math.asin(Math.max(-1, Math.min(1, ny)));
+      const lon = Math.atan2(nx, nz);
+
+      // Cloud swirl bands and cyclonic vortex storms
+      const c1 = Math.sin(lon * 4.2 + lat * 6.5);
+      const c2 = Math.cos((lon * 7.5 - 1.4) * (lat * 5.0 + 0.6));
+      const c3 = Math.sin(lon * 14.0 - lat * 11.0) * 0.5;
+      const cloudNoise = c1 * 0.45 + c2 * 0.35 + c3 * 0.2;
+
+      // Equatorial Intertropical Convergence Zone (ITCZ) Cloud Belt
+      const itcz = Math.exp(-Math.pow(lat - 0.06, 2) / 0.035) * 0.9;
+      // Mid-Latitude Storm Front Spirals
+      const storm1 = Math.exp(-Math.pow(lat + 0.58, 2) / 0.06) * (Math.sin(lon * 5.0 + 0.8) > -0.2 ? 0.75 : 0.1);
+      const storm2 = Math.exp(-Math.pow(lat - 0.62, 2) / 0.07) * (Math.cos(lon * 4.2 - 1.1) > -0.2 ? 0.75 : 0.1);
+
+      // Hurricane / Cyclone Vortex near Caribbean / Pacific
+      const distCyclone = Math.sqrt(Math.pow(lon + 1.25, 2) + Math.pow(lat + 0.35, 2));
+      const cyclone = distCyclone < 0.35 ? (0.35 - distCyclone) * 2.8 : 0;
+
+      const density = cloudNoise * 0.45 + itcz + storm1 + storm2 + cyclone;
+      return Math.max(0, Math.min(1, (density - 0.24) * 2.2));
+    };
+
+    // Render 3D Globe with Pixel Art Precision
+    for (let y = 0; y < size; y += px) {
+      for (let x = 0; x < size; x += px) {
+        const dx = (x + px / 2) - center;
+        const dy = (y + px / 2) - center;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= radius) {
+          // Calculate 3D Sphere Surface Normal
+          const z = Math.sqrt(radius * radius - dx * dx - dy * dy);
+          const nx = dx / radius;
+          const ny = dy / radius;
+          const nz = z / radius;
+
+          // Lambertian Solar Diffuse Lighting (N dot L)
+          const NdotL = nx * lx + ny * ly + nz * lz;
+          // Ocean Specular Sunglint (N dot H)
+          const NdotH = Math.max(0, nx * hx + ny * hy + nz * hz);
+          const sunglint = Math.pow(NdotH, 26);
+
+          // Sample Geography & Clouds
+          const geo = getGeography(nx, ny, nz);
+          const cloud = getClouds(nx, ny, nz);
+
+          let color = pal.oceanAbyss;
+
+          // Land & Ocean Shading
+          if (geo.type === 'ice') {
+            if (NdotL > 0.45) color = pal.iceWhite;
+            else if (NdotL > 0.18) color = pal.iceHighlight;
+            else if (NdotL > 0) color = pal.iceGlacierBlue;
+            else color = pal.iceShadow;
+          } else if (geo.type === 'desert') {
+            if (NdotL > 0.55) color = pal.desertSunlit;
+            else if (NdotL > 0.35) color = pal.desertDuneGold;
+            else if (NdotL > 0.15) color = pal.desertSand;
+            else if (NdotL > 0) color = pal.desertMid;
+            else color = pal.desertDark;
+          } else if (geo.type === 'jungle') {
+            if (NdotL > 0.5) color = pal.grassland;
+            else if (NdotL > 0.3) color = pal.forestGreen;
+            else if (NdotL > 0.12) color = pal.jungleLush;
+            else color = pal.jungleDeep;
+          } else if (geo.type === 'temperate') {
+            if (NdotL > 0.5) color = pal.grassland;
+            else if (NdotL > 0.3) color = pal.forestGreen;
+            else if (NdotL > 0.12) color = pal.jungleLush;
+            else color = pal.jungleDeep;
+          } else if (geo.type === 'mountain') {
+            if (geo.elevation > 0.45 && NdotL > 0.3) color = pal.mountainPeakSnow;
+            else if (NdotL > 0.45) color = pal.mountainRock;
+            else if (NdotL > 0.2) color = pal.mountainSlate;
+            else color = pal.mountainDark;
+          } else if (geo.type === 'shelf') {
+            if (NdotL > 0.3) color = pal.oceanTropical;
+            else if (NdotL > 0.1) color = pal.oceanShelf;
+            else color = pal.oceanLight;
+          } else {
+            // Deep Open Ocean
+            if (sunglint > 0.75 && NdotL > 0.25) {
+              color = sunglint > 0.92 ? pal.iceWhite : pal.oceanLagoon;
+            } else if (NdotL > 0.5) {
+              color = pal.oceanLight;
+            } else if (NdotL > 0.28) {
+              color = pal.oceanAzure;
+            } else if (NdotL > 0.1) {
+              color = pal.oceanMid;
+            } else if (NdotL > -0.05) {
+              color = pal.oceanNavy;
+            } else {
+              color = pal.oceanAbyss;
+            }
+          }
+
+          // Coastal Reef / Shallow Turquoise Outlines
+          if (geo.isShelf && !geo.isLand && NdotL > 0.15) {
+            color = pal.oceanShelf;
+          }
+
+          // Cloud Shadow onto Earth Terrain
+          const cloudShadowSample = getClouds(nx - lx * 0.035, ny - ly * 0.035, nz - lz * 0.035);
+          if (cloudShadowSample > 0.45 && cloud < 0.35 && NdotL > 0.1) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, px, px);
+            ctx.fillStyle = pal.cloudGroundShadow;
+            ctx.fillRect(x, y, px, px);
+            continue;
+          }
+
+          // Atmospheric Cloud Layer Overlay
+          if (cloud > 0.32 && NdotL > -0.15) {
+            if (cloud > 0.72 && NdotL > 0.28) {
+              color = pal.cloudPureWhite;
+            } else if (cloud > 0.52 && NdotL > 0.12) {
+              color = pal.cloudBright;
+            } else if (cloud > 0.38 && NdotL > 0) {
+              color = pal.cloudMid;
+            } else {
+              color = pal.cloudUnderShadow;
+            }
+          }
+
+          // Day/Night Terminator Shadow & Nocturnal Megacity Lights
+          if (NdotL <= 0.08) {
+            const nightFactor = Math.max(0, Math.min(1, (-NdotL + 0.08) * 4.0));
+            if (nightFactor > 0.65) {
+              // Deep Night Hemisphere
+              if (geo.isLand && geo.cityChance > 0) {
+                const seed = Math.sin(dx * 7.1 + dy * 5.3) * Math.cos(dx * 3.7 - dy * 9.1);
+                if (seed > 0.68) {
+                  // Sprawling City Light Cluster
+                  color = seed > 0.88 ? pal.cityGold : (seed > 0.78 ? pal.cityAmber : pal.cityOrange);
+                } else {
+                  color = pal.oceanDeepTrench;
+                }
+              } else {
+                color = pal.oceanDeepTrench;
+              }
+            } else if (nightFactor > 0.2) {
+              // Twilight Penumbra Band
+              color = pal.oceanAbyss;
+            }
+          }
+
+          // Atmospheric Limb Scattering Rim Haze on Sunlit Arc
+          if (dist > radius - 8 && NdotL > 0.05) {
+            color = pal.oceanShelf;
+          }
+          if (dist > radius - 3 && NdotL > 0.2) {
+            color = pal.oceanLagoon;
+          }
+
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y, px, px);
+        }
+      }
+    }
+
+    // Specular Sun Glint Starburst Flare on Ocean
+    const flareX = center + lx * radius * 0.45;
+    const flareY = center + ly * radius * 0.45;
+    const flareGrad = ctx.createRadialGradient(flareX, flareY, 1, flareX, flareY, 26);
+    flareGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+    flareGrad.addColorStop(0.2, 'rgba(125, 211, 252, 0.65)');
+    flareGrad.addColorStop(0.5, 'rgba(14, 165, 233, 0.25)');
+    flareGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = flareGrad;
+    ctx.beginPath();
+    ctx.arc(flareX, flareY, 26, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glint diffraction cross
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillRect(flareX - 18, flareY - 1, 36, 2);
+    ctx.fillRect(flareX - 1, flareY - 18, 2, 36);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateLunarLandscape() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.clearRect(0, 0, 1024, 512);
+
+    // Exact Apollo Basalt & Anorthosite High-Contrast Palette
+    const pal = [
+      '#ffffff', // 0: Pure Specular White (Sunlit crater rims & jagged mountain needles)
+      '#f8fafc', // 1: Blinding Sunlit Anorthosite Rock
+      '#e2e8f0', // 2: Light Highland Scree Slopes
+      '#cbd5e1', // 3: Mid Highland Regolith Slate
+      '#94a3b8', // 4: Transition Mare Slate
+      '#64748b', // 5: Mare Basalt Gray
+      '#475569', // 6: Dark Mare Basalt Floor
+      '#334155', // 7: Deep Basalt Plain
+      '#1e293b', // 8: Lowland Shadow Basalt
+      '#0f172a', // 9: Nightside / Crater Bowl Shadow
+      '#02040a'  // 10: Cosmic Vacuum Pitch Black (Deep Space & Zero-Diffusion Shadow)
+    ];
+
+    const px = 2;
+
+    // 1. Deep Space Cosmic Vacuum Sky Background (Zero Atmosphere)
+    ctx.fillStyle = pal[10];
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // Faint Cosmic Nebula Dust Streamers in Deep Space
+    const nebGrad = ctx.createLinearGradient(0, 0, 1024, 260);
+    nebGrad.addColorStop(0, 'rgba(30, 27, 75, 0.18)');
+    nebGrad.addColorStop(0.35, 'rgba(15, 23, 42, 0.12)');
+    nebGrad.addColorStop(0.7, 'rgba(49, 46, 129, 0.15)');
+    nebGrad.addColorStop(1, 'rgba(30, 27, 75, 0.18)');
+    ctx.fillStyle = nebGrad;
+    ctx.fillRect(0, 0, 1024, 260);
+
+    // Pinpoint Spectral Starfield (100% Horizontally Seamless across width 1024)
+    for (let i = 0; i < 360; i++) {
+      // Deterministic periodic distribution ensures flawless seamless looping at x=0 and x=1024
+      const a = i * 2.39996; // Golden ratio spiral sampling
+      const sx = ((Math.sin(a * 43.1) * 0.5 + 0.5) * 1024) % 1024;
+      const sy = (Math.cos(a * 17.7) * 0.5 + 0.5) * 250;
+      const brightness = Math.sin(i * 19.3) * 0.5 + 0.5;
+
+      if (brightness > 0.95) {
+        // Bright Alpha Star with 4-Point Diffraction Spike
+        ctx.fillStyle = pal[0];
+        ctx.fillRect(sx - 1, sy - 1, 3, 3);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.fillRect(sx - 4, sy, 9, 1);
+        ctx.fillRect(sx, sy - 4, 1, 9);
+      } else if (brightness > 0.7) {
+        ctx.fillStyle = pal[1];
+        ctx.fillRect(sx, sy, 2, 2);
+      } else if (brightness > 0.4) {
+        // Spectral blue/white star
+        ctx.fillStyle = '#bae6fd';
+        ctx.fillRect(sx, sy, 1.5, 1.5);
+      } else {
+        // Faint distant star
+        ctx.fillStyle = pal[4];
+        ctx.fillRect(sx, sy, 1, 1);
+      }
+    }
+
+    // 2. Far Background Lunar Mountain Range (Montes Apenninus & Montes Alpes Massifs)
+    // 100% Seamless periodic continuous formula across 1024
+    const getFarMountainY = (x: number) => {
+      const a = (x / 1024) * Math.PI * 2;
+      return 240 + Math.sin(a) * 38 + Math.cos(a * 3) * 22 + Math.sin(a * 7) * 14 + Math.cos(a * 15) * 6 + Math.sin(a * 31) * 3;
+    };
+
+    // Far Mountains Deep Shadow Base Silhouette
+    ctx.fillStyle = pal[9];
+    ctx.beginPath();
+    ctx.moveTo(0, 512);
+    for (let x = 0; x <= 1024; x += px * 2) {
+      ctx.lineTo(x, getFarMountainY(x));
+    }
+    ctx.lineTo(1024, 512);
+    ctx.closePath();
+    ctx.fill();
+
+    // Far Mountains 3D Vacuum Facet Shading (Harsh Direct Sunlight from Top-Left, No Atmosphere)
+    for (let x = 0; x < 1024; x += px * 2) {
+      const y1 = getFarMountainY(x);
+      const y2 = getFarMountainY((x + px * 2) % 1024);
+      const slope = y2 - y1;
+
+      if (slope < -0.25) {
+        // Sunlit slope facing directly toward sunlight
+        ctx.fillStyle = pal[2];
+        ctx.fillRect(x, y1, px * 2, 512 - y1);
+        ctx.fillStyle = pal[1];
+        ctx.fillRect(x, y1, px * 2, 6);
+        ctx.fillStyle = pal[0];
+        ctx.fillRect(x, y1, px * 2, 2);
+      } else if (slope > 0.25) {
+        // Shadowed slope facing away into vacuum pitch black
+        ctx.fillStyle = pal[9];
+        ctx.fillRect(x, y1, px * 2, 512 - y1);
+        ctx.fillStyle = pal[10];
+        ctx.fillRect(x, y1, px * 2, 10);
+      } else {
+        // Crest / Plateau ridge
+        ctx.fillStyle = pal[4];
+        ctx.fillRect(x, y1, px * 2, 512 - y1);
+        ctx.fillStyle = pal[3];
+        ctx.fillRect(x, y1, px * 2, 4);
+      }
+    }
+
+    // Specular Needle Peaks on Mountain Crests
+    for (let x = 0; x < 1024; x += 8) {
+      const y = getFarMountainY(x);
+      const prevY = getFarMountainY((x - 8 + 1024) % 1024);
+      const nextY = getFarMountainY((x + 8) % 1024);
+      if (y < prevY && y < nextY) {
+        ctx.fillStyle = pal[0];
+        ctx.fillRect(x - 2, y - 4, 5, 4);
+        ctx.fillStyle = pal[1];
+        ctx.fillRect(x - 4, y, 9, 4);
+      }
+    }
+
+    // 3. Midground Mare Horizon & Rolling Basalt Regolith Plains
+    const getMidHorizonY = (x: number) => {
+      const a = (x / 1024) * Math.PI * 2;
+      return 310 + Math.sin(a * 2) * 26 + Math.cos(a * 5) * 16 + Math.sin(a * 11) * 8 + Math.cos(a * 23) * 4;
+    };
+
+    // Midground Mare Fill
+    ctx.fillStyle = pal[7];
+    ctx.beginPath();
+    ctx.moveTo(0, 512);
+    for (let x = 0; x <= 1024; x += px * 2) {
+      ctx.lineTo(x, getMidHorizonY(x));
+    }
+    ctx.lineTo(1024, 512);
+    ctx.closePath();
+    ctx.fill();
+
+    // Layered Regolith Transition
+    ctx.fillStyle = pal[6];
+    ctx.beginPath();
+    ctx.moveTo(0, 512);
+    for (let x = 0; x <= 1024; x += px * 2) {
+      ctx.lineTo(x, getMidHorizonY(x) + 12);
+    }
+    ctx.lineTo(1024, 512);
+    ctx.closePath();
+    ctx.fill();
+
+    // 16-Bit Regolith Dust Dithering across Basalt Plain
+    for (let x = 0; x < 1024; x += 6) {
+      for (let y = 330; y < 512; y += 6) {
+        const dither = ((x / 6) + (y / 6)) % 4;
+        if (dither === 0) {
+          ctx.fillStyle = pal[5];
+          ctx.fillRect(x, y, 3, 3);
+        } else if (dither === 2) {
+          ctx.fillStyle = pal[4];
+          ctx.fillRect(x, y, 2, 2);
+        }
+      }
+    }
+
+    // 4. Tycho & Copernicus Bright High-Albedo Impact Ejecta Ray Systems
+    const rayOrigins = [
+      { x: 230, y: 410 },
+      { x: 790, y: 395 }
+    ];
+    for (const origin of rayOrigins) {
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 16) {
+        const rayLen = 110 + Math.sin(a * 6) * 45;
+        const endX = origin.x + Math.cos(a) * rayLen * 2.1;
+        const endY = origin.y + Math.sin(a) * rayLen * 0.8;
+
+        ctx.strokeStyle = 'rgba(203, 213, 225, 0.45)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(248, 250, 252, 0.7)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+      }
+    }
+
+    // 5. Sinuous Lava Rilles (Collapsed Subterranean Lava Tube Canyons)
+    const drawRille = (startX: number, startY: number, len: number) => {
+      for (let i = 0; i < len; i += 3) {
+        const rx = startX + i * 2.4 + Math.sin(i * 0.14) * 12;
+        const ry = startY + Math.cos(i * 0.18) * 8;
+        // Deep Canyon Chasm
+        ctx.fillStyle = pal[10];
+        ctx.fillRect(rx, ry, 4, 4);
+        // Sunlit Canyon Lip Rim
+        ctx.fillStyle = pal[1];
+        ctx.fillRect(rx - 1, ry - 1, 3, 1);
+        ctx.fillStyle = pal[2];
+        ctx.fillRect(rx - 1, ry, 1, 3);
+      }
+    };
+    drawRille(110, 390, 60);
+    drawRille(590, 420, 70);
+
+    // 6. Photorealistically Shaded Impact Craters with Terraced Anatomy
+    interface CraterSpec {
+      cx: number;
+      cy: number;
+      rx: number;
+      ry: number;
+      hasCentralPeak?: boolean;
+      terracedRim?: boolean;
+    }
+
+    const craters: CraterSpec[] = [
+      { cx: 230, cy: 410, rx: 64, ry: 26, hasCentralPeak: true, terracedRim: true },
+      { cx: 790, cy: 395, rx: 72, ry: 28, hasCentralPeak: true, terracedRim: true },
+      { cx: 500, cy: 440, rx: 48, ry: 18, hasCentralPeak: false, terracedRim: false },
+      { cx: 95,  cy: 375, rx: 32, ry: 13, hasCentralPeak: false, terracedRim: false },
+      { cx: 620, cy: 390, rx: 38, ry: 15, hasCentralPeak: false, terracedRim: false },
+      { cx: 940, cy: 450, rx: 44, ry: 17, hasCentralPeak: false, terracedRim: false },
+      { cx: 365, cy: 415, rx: 28, ry: 11, hasCentralPeak: false, terracedRim: false },
+      { cx: 25,  cy: 460, rx: 36, ry: 14, hasCentralPeak: false, terracedRim: false },
+      { cx: 690, cy: 470, rx: 40, ry: 16, hasCentralPeak: false, terracedRim: false },
+    ];
+
+    for (const c of craters) {
+      // 1. High-Albedo Outer Ejecta Blanket
+      ctx.fillStyle = pal[4];
+      ctx.beginPath();
+      ctx.ellipse(c.cx, c.cy, c.rx + 8, c.ry + 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Sunlit Outer Rim Wall (Catching Direct Light from Top-Left)
+      ctx.fillStyle = pal[1];
+      ctx.beginPath();
+      ctx.ellipse(c.cx, c.cy, c.rx + 4, c.ry + 3, 0, Math.PI * 0.72, Math.PI * 1.88);
+      ctx.fill();
+
+      // Razor-Sharp Specular Rim Crest
+      ctx.fillStyle = pal[0];
+      ctx.beginPath();
+      ctx.ellipse(c.cx - 2, c.cy - 1, c.rx + 1.5, c.ry + 1.5, 0, Math.PI * 0.85, Math.PI * 1.65);
+      ctx.fill();
+
+      // 3. Shadowed Outer Rim Wall (Opposite Side)
+      ctx.fillStyle = pal[9];
+      ctx.beginPath();
+      ctx.ellipse(c.cx, c.cy, c.rx + 4, c.ry + 3, 0, -Math.PI * 0.18, Math.PI * 0.72);
+      ctx.fill();
+
+      // 4. Crater Bowl Interior (Basalt Lowland Floor)
+      ctx.fillStyle = pal[8];
+      ctx.beginPath();
+      ctx.ellipse(c.cx, c.cy, c.rx - 3, c.ry - 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 5. Sharp Vacuum Interior Rim Cast Shadow (Right/Bottom of Interior)
+      ctx.fillStyle = pal[10];
+      ctx.beginPath();
+      ctx.ellipse(c.cx + c.rx * 0.22, c.cy + c.ry * 0.22, c.rx * 0.68, c.ry * 0.68, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 6. Lit Interior Wall (Left/Top of Interior Bowl)
+      ctx.fillStyle = pal[5];
+      ctx.beginPath();
+      ctx.ellipse(c.cx - c.rx * 0.22, c.cy - c.ry * 0.12, c.rx * 0.52, c.ry * 0.52, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Terraced Inner Wall Steps
+      if (c.terracedRim) {
+        ctx.fillStyle = pal[2];
+        ctx.fillRect(c.cx - c.rx * 0.58, c.cy - 3, c.rx * 0.35, 2);
+        ctx.fillStyle = pal[3];
+        ctx.fillRect(c.cx - c.rx * 0.45, c.cy + 2, c.rx * 0.28, 2);
+      }
+
+      // 7. Central Uplift Mountain Peak Complex
+      if (c.hasCentralPeak) {
+        ctx.fillStyle = pal[10];
+        ctx.fillRect(c.cx - 2, c.cy - 2, 10, 6);
+        ctx.fillStyle = pal[1];
+        ctx.fillRect(c.cx - 5, c.cy - 4, 6, 5);
+        ctx.fillStyle = pal[0];
+        ctx.fillRect(c.cx - 4, c.cy - 4, 3, 3);
+      }
+    }
+
+    // 7. Scattered Impact Boulders with Vacuum Drop Shadows
+    const boulders = [
+      { x: 155, y: 435, r: 6 },
+      { x: 295, y: 475, r: 8 },
+      { x: 410, y: 440, r: 5 },
+      { x: 555, y: 485, r: 7 },
+      { x: 645, y: 430, r: 6 },
+      { x: 840, y: 455, r: 9 },
+      { x: 900, y: 485, r: 5 },
+      { x: 70,  y: 480, r: 7 },
+    ];
+
+    for (const b of boulders) {
+      // Crisp zero-atmosphere shadow
+      ctx.fillStyle = pal[10];
+      ctx.fillRect(b.x + 2, b.y + 1, b.r * 2.6, b.r * 0.9);
+
+      // Rock core
+      ctx.fillStyle = pal[7];
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sunlit facet
+      ctx.fillStyle = pal[1];
+      ctx.beginPath();
+      ctx.arc(b.x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Specular highlight
+      ctx.fillStyle = pal[0];
+      ctx.fillRect(b.x - b.r * 0.5, b.y - b.r * 0.5, 2, 2);
+    }
+
+    // 8. Chiseled Horizon Ridge Line
+    ctx.strokeStyle = pal[2];
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let x = 0; x <= 1024; x += px * 2) {
+      const y = getMidHorizonY(x);
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateCity() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    
+    ctx.clearRect(0, 0, 1024, 512);
+
+    // Authentic Nocturnal Metropolis Palette (Subdued, realistic, elegant architectural tones)
+    const pal = {
+      // Atmospheric & Sky Fog (Subtle, transparent top)
+      horizonHaze: 'rgba(15, 23, 42, 0.45)',
+      
+      // Distant Far Skyline Silhouettes (Layer 1)
+      farSilhouette: '#080c14',
+      farSilhouetteTrim: '#111724',
+      farWindowWarm: 'rgba(254, 240, 138, 0.35)',
+      farWindowCool: 'rgba(203, 213, 225, 0.28)',
+
+      // Midground Skyline Structures (Layer 2)
+      midHullBase: '#0c121e',
+      midHullTrim: '#1a2336',
+      midWindowWarm: 'rgba(253, 224, 71, 0.55)',
+      midWindowCool: 'rgba(226, 232, 240, 0.45)',
+
+      // Foreground Skyscraper Hulls (Layer 3 - Concrete, Granite, Matte Steel, Dark Glass)
+      hullDarkest: '#090d16',
+      hullNavySlate: '#0f1624',
+      hullGraniteDark: '#141c2c',
+      hullSlateMid: '#1b2538',
+      hullConcreteLit: '#25324a',
+      hullSteelFrame: '#374763',
+      hullMullionTrim: '#4b5e7d',
+      hullSpecularMoon: '#7b8ea8',
+
+      // Realistic Window Arrays (Night Office Reality: ~80% dark, scattered working lights)
+      winDarkUnlit: '#070a12',
+      winDarkReflect: '#111723',
+      winWarmTungsten: '#fde68a',       // Soft incandescent office light
+      winWarmTungstenGlow: '#f59e0b',   // Warm desk lamp accent
+      winCoolFluorescent: '#e2e8f0',   // Modern cool office light
+      winSoftCyan: '#93c5fd',          // Soft architectural interior
+      winDimAmbient: '#334155',        // Low-lit interior room
+
+      // Structural Architectural Elements
+      metalSilver: '#94a3b8',
+      metalSteel: '#475569',
+      metalDark: '#1e293b',
+      woodWaterTank: '#5c2c16',
+      woodWaterStaves: '#78350f',
+      woodWaterBands: '#271006',
+
+      // Aviation Obstruction Markers & Floodlights
+      beaconRed: '#ef4444',
+      beaconRedCore: '#ffffff',
+      serviceLightWarm: '#fde047',
+      floodlightWarm: 'rgba(253, 230, 138, 0.12)'
+    };
+
+    // 1. Subtle Horizon Atmospheric Haze (Low on canvas, y: 380 - 512)
+    const cityGlow = ctx.createLinearGradient(0, 380, 0, 512);
+    cityGlow.addColorStop(0, 'rgba(15, 23, 42, 0)');
+    cityGlow.addColorStop(0.5, 'rgba(15, 23, 42, 0.25)');
+    cityGlow.addColorStop(1, 'rgba(9, 13, 22, 0.65)');
+    ctx.fillStyle = cityGlow;
+    ctx.fillRect(0, 380, 1024, 132);
+
+    // 2. LAYER 1: Distant Background Skyline Silhouettes (Lower height profile: 60px - 110px)
+    // Heights range 60 to 110px from bottom (y: 402 - 452)
+    interface FarSkylineBuilding {
+      x: number;
+      w: number;
+      h: number;
+      hasSpire?: boolean;
+    }
+    const farSkyline: FarSkylineBuilding[] = [
+      { x: 0, w: 36, h: 90, hasSpire: true },
+      { x: 32, w: 26, h: 65 },
+      { x: 56, w: 44, h: 105 },
+      { x: 98, w: 34, h: 75, hasSpire: true },
+      { x: 130, w: 48, h: 95 },
+      { x: 176, w: 32, h: 70 },
+      { x: 206, w: 52, h: 110, hasSpire: true },
+      { x: 256, w: 38, h: 80 },
+      { x: 292, w: 46, h: 100 },
+      { x: 336, w: 30, h: 65, hasSpire: true },
+      { x: 364, w: 54, h: 105 },
+      { x: 416, w: 36, h: 75 },
+      { x: 450, w: 48, h: 95, hasSpire: true },
+      { x: 496, w: 32, h: 65 },
+      { x: 526, w: 56, h: 110 },
+      { x: 580, w: 34, h: 75, hasSpire: true },
+      { x: 612, w: 46, h: 95 },
+      { x: 656, w: 38, h: 70 },
+      { x: 692, w: 52, h: 105, hasSpire: true },
+      { x: 742, w: 36, h: 80 },
+      { x: 776, w: 48, h: 100 },
+      { x: 822, w: 32, h: 65, hasSpire: true },
+      { x: 852, w: 54, h: 105 },
+      { x: 904, w: 38, h: 75 },
+      { x: 940, w: 46, h: 95, hasSpire: true },
+      { x: 984, w: 42, h: 70 }
+    ];
+
+    for (const fb of farSkyline) {
+      const topY = 512 - fb.h;
+      ctx.fillStyle = pal.farSilhouette;
+      ctx.fillRect(fb.x, topY, fb.w, fb.h);
+
+      // Fine roof cornice line
+      ctx.fillStyle = pal.farSilhouetteTrim;
+      ctx.fillRect(fb.x, topY, fb.w, 1.5);
+
+      // Distant micro-window dots (subdued, realistic sparse scatter)
+      for (let wy = topY + 8; wy < 512 - 15; wy += 8) {
+        for (let wx = fb.x + 4; wx < fb.x + fb.w - 4; wx += 6) {
+          const hash = (wx * 19 + wy * 31) % 9;
+          if (hash === 1) {
+            ctx.fillStyle = pal.farWindowWarm;
+            ctx.fillRect(wx, wy, 2, 3);
+          } else if (hash === 3) {
+            ctx.fillStyle = pal.farWindowCool;
+            ctx.fillRect(wx, wy, 2, 3);
+          }
+        }
+      }
+
+      // Distant spire with micro beacon
+      if (fb.hasSpire) {
+        const cx = fb.x + Math.floor(fb.w / 2);
+        ctx.fillStyle = pal.farSilhouetteTrim;
+        ctx.fillRect(cx, topY - 14, 1.5, 14);
+        ctx.fillStyle = pal.beaconRed;
+        ctx.fillRect(cx - 0.5, topY - 15, 2, 2);
+      }
+    }
+
+    // 3. LAYER 2: Midground Modernist Skyline (Heights 90px - 150px, y: 362 - 422)
+    interface MidSkylineBuilding {
+      x: number;
+      w: number;
+      h: number;
+      style: 'modern_setback' | 'curtain_glass' | 'masonry_tower';
+    }
+    const midSkyline: MidSkylineBuilding[] = [
+      { x: 12, w: 52, h: 135, style: 'modern_setback' },
+      { x: 78, w: 60, h: 115, style: 'curtain_glass' },
+      { x: 154, w: 46, h: 145, style: 'masonry_tower' },
+      { x: 218, w: 56, h: 125, style: 'curtain_glass' },
+      { x: 290, w: 50, h: 150, style: 'modern_setback' },
+      { x: 358, w: 64, h: 120, style: 'masonry_tower' },
+      { x: 438, w: 52, h: 140, style: 'curtain_glass' },
+      { x: 508, w: 58, h: 125, style: 'modern_setback' },
+      { x: 584, w: 48, h: 145, style: 'masonry_tower' },
+      { x: 648, w: 62, h: 120, style: 'curtain_glass' },
+      { x: 726, w: 54, h: 150, style: 'modern_setback' },
+      { x: 798, w: 58, h: 125, style: 'masonry_tower' },
+      { x: 872, w: 50, h: 140, style: 'curtain_glass' },
+      { x: 938, w: 56, h: 130, style: 'modern_setback' }
+    ];
+
+    for (const mb of midSkyline) {
+      const topY = 512 - mb.h;
+      ctx.fillStyle = pal.midHullBase;
+      ctx.fillRect(mb.x, topY, mb.w, mb.h);
+
+      // Edge bevel
+      ctx.fillStyle = pal.midHullTrim;
+      ctx.fillRect(mb.x, topY, 2, mb.h);
+      ctx.fillRect(mb.x, topY, mb.w, 2);
+
+      // Midground realistic window grids
+      for (let wy = topY + 10; wy < 512 - 20; wy += 10) {
+        for (let wx = mb.x + 5; wx < mb.x + mb.w - 5; wx += 8) {
+          const hash = (wx * 23 + wy * 41) % 8;
+          if (hash === 1) {
+            ctx.fillStyle = pal.midWindowWarm;
+            ctx.fillRect(wx, wy, 3, 5);
+          } else if (hash === 3 || hash === 5) {
+            ctx.fillStyle = pal.midWindowCool;
+            ctx.fillRect(wx, wy, 3, 5);
+          } else {
+            ctx.fillStyle = pal.winDarkUnlit;
+            ctx.fillRect(wx, wy, 3, 5);
+          }
+        }
+      }
+
+      // Roof HVAC unit & antenna
+      const cx = mb.x + Math.floor(mb.w / 2);
+      ctx.fillStyle = pal.midHullTrim;
+      ctx.fillRect(cx - 6, topY - 5, 12, 5);
+      ctx.fillStyle = pal.metalSteel;
+      ctx.fillRect(cx - 0.5, topY - 18, 1.5, 13);
+      ctx.fillStyle = pal.beaconRed;
+      ctx.fillRect(cx - 1, topY - 19, 2.5, 2);
+    }
+
+    // 4. LAYER 3: Detailed Realistic Foreground Skyscrapers
+    // Lower vertical profile: heights 110px - 195px (highest structural spire reaches ~220px, y: 292)
+    interface RealSkyscraper {
+      x: number;
+      w: number;
+      h: number;
+      hullColor: string;
+      accentColor: string;
+      archStyle: 'international_modern' | 'art_deco_setback' | 'curtain_wall_slant' | 'masonry_classical' | 'broadcast_telecom' | 'industrial_commercial';
+      roofEquipment: 'antenna_mast' | 'water_tank_trestle' | 'chiller_louvers' | 'penthouse_bulkhead' | 'broadcast_tower' | 'stepped_crown';
+      hasSmolderingDamage?: boolean;
+    }
+
+    const foregroundSkyscrapers: RealSkyscraper[] = [
+      {
+        x: 0, w: 68, h: 165,
+        hullColor: pal.hullNavySlate,
+        accentColor: pal.hullSlateMid,
+        archStyle: 'art_deco_setback',
+        roofEquipment: 'stepped_crown'
+      },
+      {
+        x: 64, w: 76, h: 195,
+        hullColor: pal.hullGraniteDark,
+        accentColor: pal.hullConcreteLit,
+        archStyle: 'international_modern',
+        roofEquipment: 'chiller_louvers'
+      },
+      {
+        x: 136, w: 58, h: 130,
+        hullColor: pal.hullSlateMid,
+        accentColor: pal.hullSteelFrame,
+        archStyle: 'industrial_commercial',
+        roofEquipment: 'water_tank_trestle'
+      },
+      {
+        x: 190, w: 82, h: 180,
+        hullColor: pal.hullDarkest,
+        accentColor: pal.hullConcreteLit,
+        archStyle: 'curtain_wall_slant',
+        roofEquipment: 'antenna_mast'
+      },
+      {
+        x: 268, w: 64, h: 145,
+        hullColor: pal.hullNavySlate,
+        accentColor: pal.hullSlateMid,
+        archStyle: 'masonry_classical',
+        roofEquipment: 'penthouse_bulkhead'
+      },
+      {
+        x: 328, w: 74, h: 190,
+        hullColor: pal.hullGraniteDark,
+        accentColor: pal.hullConcreteLit,
+        archStyle: 'art_deco_setback',
+        roofEquipment: 'stepped_crown'
+      },
+      {
+        x: 398, w: 62, h: 135,
+        hullColor: pal.hullSlateMid,
+        accentColor: pal.hullSteelFrame,
+        archStyle: 'industrial_commercial',
+        roofEquipment: 'antenna_mast',
+        hasSmolderingDamage: true
+      },
+      {
+        x: 456, w: 84, h: 200,
+        hullColor: pal.hullDarkest,
+        accentColor: pal.hullConcreteLit,
+        archStyle: 'international_modern',
+        roofEquipment: 'broadcast_tower'
+      },
+      {
+        x: 536, w: 66, h: 155,
+        hullColor: pal.hullNavySlate,
+        accentColor: pal.hullSlateMid,
+        archStyle: 'masonry_classical',
+        roofEquipment: 'water_tank_trestle'
+      },
+      {
+        x: 598, w: 78, h: 185,
+        hullColor: pal.hullGraniteDark,
+        accentColor: pal.hullConcreteLit,
+        archStyle: 'curtain_wall_slant',
+        roofEquipment: 'chiller_louvers'
+      },
+      {
+        x: 672, w: 60, h: 140,
+        hullColor: pal.hullSlateMid,
+        accentColor: pal.hullSteelFrame,
+        archStyle: 'industrial_commercial',
+        roofEquipment: 'penthouse_bulkhead'
+      },
+      {
+        x: 728, w: 76, h: 190,
+        hullColor: pal.hullNavySlate,
+        accentColor: pal.hullConcreteLit,
+        archStyle: 'art_deco_setback',
+        roofEquipment: 'stepped_crown'
+      },
+      {
+        x: 800, w: 64, h: 150,
+        hullColor: pal.hullGraniteDark,
+        accentColor: pal.hullSlateMid,
+        archStyle: 'masonry_classical',
+        roofEquipment: 'water_tank_trestle'
+      },
+      {
+        x: 860, w: 80, h: 195,
+        hullColor: pal.hullDarkest,
+        accentColor: pal.hullConcreteLit,
+        archStyle: 'international_modern',
+        roofEquipment: 'antenna_mast'
+      },
+      {
+        x: 936, w: 58, h: 135,
+        hullColor: pal.hullSlateMid,
+        accentColor: pal.hullSteelFrame,
+        archStyle: 'industrial_commercial',
+        roofEquipment: 'chiller_louvers'
+      },
+      {
+        x: 990, w: 38, h: 165, // Seamless wrap into x: 0
+        hullColor: pal.hullNavySlate,
+        accentColor: pal.hullSlateMid,
+        archStyle: 'art_deco_setback',
+        roofEquipment: 'stepped_crown'
+      }
+    ];
+
+    // Render Foreground Skyscrapers with Architectural Precision
+    for (const b of foregroundSkyscrapers) {
+      const bY = 512 - b.h;
+
+      // 1. Building Solid Concrete / Steel Massif
+      ctx.fillStyle = b.hullColor;
+      ctx.fillRect(b.x, bY, b.w, b.h);
+
+      // Subtle Moonlight Shading (Left edge highlight, right shadow)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.fillRect(b.x, bY, 2, b.h);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.fillRect(b.x + b.w - 2, bY, 2, b.h);
+
+      // Parapet / Cornice Roofline
+      ctx.fillStyle = b.accentColor;
+      ctx.fillRect(b.x - 1, bY, b.w + 2, 4);
+      ctx.fillStyle = pal.hullSpecularMoon;
+      ctx.fillRect(b.x - 1, bY, b.w + 2, 1);
+
+      // Vertical Architectural Pilasters / Column Piers
+      ctx.fillStyle = b.accentColor;
+      const colSpacing = 16;
+      for (let px = b.x + 8; px < b.x + b.w - 6; px += colSpacing) {
+        ctx.fillRect(px, bY + 8, 2, b.h - 8);
+      }
+
+      // Horizontal Floor Spandrel Slabs (Separates building floors realistically)
+      const floorH = 12;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      for (let fy = bY + 6; fy < 512 - 10; fy += floorH) {
+        ctx.fillRect(b.x + 2, fy, b.w - 4, 2);
+      }
+
+      // 2. Realistic Architectural Windows Array
+      // Realistic proportions: small crisp rectangular window panes with muted interior illumination
+      const winStartY = bY + 14;
+      const winEndY = 512 - 12;
+
+      if (b.archStyle === 'international_modern') {
+        // Modernist Floor-to-Ceiling Ribbon Glass Windows
+        for (let fy = winStartY; fy < winEndY; fy += floorH) {
+          // Glass band
+          ctx.fillStyle = pal.winDarkUnlit;
+          ctx.fillRect(b.x + 4, fy, b.w - 8, 7);
+
+          // Subtle reflection sheen on dark glass
+          ctx.fillStyle = pal.winDarkReflect;
+          ctx.fillRect(b.x + 4, fy + 1, b.w - 8, 2);
+
+          // Vertical Aluminum Mullions
+          ctx.fillStyle = pal.hullSteelFrame;
+          for (let mx = b.x + 4; mx < b.x + b.w - 4; mx += 8) {
+            ctx.fillRect(mx, fy, 1, 7);
+          }
+
+          // Scattered lit office suites (Realistic occupancy: 2-3 lit bays per floor max)
+          for (let wx = b.x + 5; wx < b.x + b.w - 9; wx += 8) {
+            const hash = (wx * 17 + fy * 29) % 7;
+            if (hash === 1) {
+              // Warm tungsten desk lamp
+              ctx.fillStyle = pal.winWarmTungsten;
+              ctx.fillRect(wx, fy + 1, 6, 5);
+              ctx.fillStyle = pal.winWarmTungstenGlow;
+              ctx.fillRect(wx + 1, fy + 4, 4, 2);
+            } else if (hash === 4) {
+              // Cool neutral fluorescent
+              ctx.fillStyle = pal.winCoolFluorescent;
+              ctx.fillRect(wx, fy + 1, 6, 5);
+              ctx.fillStyle = pal.winSoftCyan;
+              ctx.fillRect(wx + 1, fy + 4, 4, 2);
+            }
+          }
+        }
+
+      } else if (b.archStyle === 'art_deco_setback') {
+        // Classic Art Deco Recessed Window Bays with Spandrel Panels
+        // Stepped setbacks at top third
+        const setbackY = bY + 32;
+        ctx.fillStyle = b.accentColor;
+        ctx.fillRect(b.x + 8, bY, b.w - 16, 32);
+        ctx.fillStyle = pal.hullSpecularMoon;
+        ctx.fillRect(b.x + 8, bY, b.w - 16, 1);
+        ctx.fillRect(b.x, setbackY, b.w, 2);
+
+        // Floodlight glow wash on the setback tier
+        const floodGrad = ctx.createLinearGradient(0, setbackY, 0, bY + 6);
+        floodGrad.addColorStop(0, 'rgba(253, 230, 138, 0.25)');
+        floodGrad.addColorStop(1, 'rgba(253, 230, 138, 0)');
+        ctx.fillStyle = floodGrad;
+        ctx.fillRect(b.x + 8, bY + 4, b.w - 16, 28);
+
+        // Windows in bays
+        for (let fy = winStartY; fy < winEndY; fy += floorH) {
+          const isTopTier = fy < setbackY;
+          const leftBound = isTopTier ? b.x + 12 : b.x + 6;
+          const rightBound = isTopTier ? b.x + b.w - 14 : b.x + b.w - 8;
+
+          for (let wx = leftBound; wx < rightBound; wx += 10) {
+            const hash = (wx * 31 + fy * 19) % 6;
+            ctx.fillStyle = pal.winDarkUnlit;
+            ctx.fillRect(wx, fy, 5, 7);
+
+            if (hash === 2) {
+              ctx.fillStyle = pal.winWarmTungsten;
+              ctx.fillRect(wx, fy, 5, 7);
+              // Transom sill
+              ctx.fillStyle = pal.winWarmTungstenGlow;
+              ctx.fillRect(wx, fy + 5, 5, 2);
+            } else if (hash === 5) {
+              ctx.fillStyle = pal.winCoolFluorescent;
+              ctx.fillRect(wx, fy, 5, 7);
+            }
+          }
+        }
+
+      } else if (b.archStyle === 'curtain_wall_slant') {
+        // Modern High-Rise with Angular Slanted Glass Parapet
+        // Draw slanted crown
+        ctx.fillStyle = b.accentColor;
+        ctx.beginPath();
+        ctx.moveTo(b.x, bY + 16);
+        ctx.lineTo(b.x + b.w, bY);
+        ctx.lineTo(b.x + b.w, bY + 16);
+        ctx.lineTo(b.x, bY + 16);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = pal.hullSpecularMoon;
+        ctx.beginPath();
+        ctx.moveTo(b.x, bY + 16);
+        ctx.lineTo(b.x + b.w, bY);
+        ctx.lineTo(b.x + b.w, bY + 1.5);
+        ctx.lineTo(b.x, bY + 17.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Dark Tinted Glass Curtain Wall with Vertical Reflection Sheen
+        const sheenX = b.x + Math.floor(b.w * 0.35);
+        const sheenGrad = ctx.createLinearGradient(sheenX - 10, 0, sheenX + 15, 0);
+        sheenGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        sheenGrad.addColorStop(0.5, 'rgba(147, 197, 253, 0.08)');
+        sheenGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = sheenGrad;
+        ctx.fillRect(b.x + 4, bY + 18, b.w - 8, b.h - 18);
+
+        // Windows
+        for (let fy = bY + 22; fy < winEndY; fy += floorH) {
+          for (let wx = b.x + 6; wx < b.x + b.w - 8; wx += 9) {
+            const hash = (wx * 13 + fy * 23) % 7;
+            if (hash === 1) {
+              ctx.fillStyle = pal.winWarmTungsten;
+              ctx.fillRect(wx, fy, 5, 6);
+            } else if (hash === 3) {
+              ctx.fillStyle = pal.winCoolFluorescent;
+              ctx.fillRect(wx, fy, 5, 6);
+            } else {
+              ctx.fillStyle = pal.winDarkUnlit;
+              ctx.fillRect(wx, fy, 5, 6);
+            }
+          }
+        }
+
+      } else {
+        // Classical Masonry / Commercial Office Buildings
+        for (let fy = winStartY; fy < winEndY; fy += floorH) {
+          for (let wx = b.x + 6; wx < b.x + b.w - 8; wx += 9) {
+            const hash = (wx * 11 + fy * 17) % 6;
+            ctx.fillStyle = pal.winDarkUnlit;
+            ctx.fillRect(wx, fy, 5, 6);
+
+            // Window sill
+            ctx.fillStyle = pal.hullSteelFrame;
+            ctx.fillRect(wx - 0.5, fy + 6, 6, 1.5);
+
+            if (hash === 2) {
+              ctx.fillStyle = pal.winWarmTungsten;
+              ctx.fillRect(wx, fy, 5, 6);
+            } else if (hash === 4) {
+              ctx.fillStyle = pal.winCoolFluorescent;
+              ctx.fillRect(wx, fy, 5, 6);
+            }
+          }
+        }
+      }
+
+      // 3. Rooftop Architectural Equipment & Obstruction Beacons
+      const cx = b.x + Math.floor(b.w / 2);
+
+      if (b.roofEquipment === 'antenna_mast') {
+        // Slender Stainless Steel Broadcast Mast with Aviation Beacon
+        ctx.fillStyle = pal.metalDark;
+        ctx.fillRect(cx - 2, bY - 8, 4, 8);
+        ctx.fillStyle = pal.metalSilver;
+        ctx.fillRect(cx - 0.5, bY - 32, 1.5, 24);
+
+        // Guy wires
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - 12, bY); ctx.lineTo(cx, bY - 20); ctx.lineTo(cx + 12, bY);
+        ctx.stroke();
+
+        // Pulsing Red FAA Aviation Warning Light
+        ctx.fillStyle = pal.beaconRed;
+        ctx.fillRect(cx - 1, bY - 34, 3, 3);
+        ctx.fillStyle = pal.beaconRedCore;
+        ctx.fillRect(cx, bY - 33, 1, 1);
+
+      } else if (b.roofEquipment === 'broadcast_tower') {
+        // Structural Open Lattice Transmission Pylon
+        ctx.strokeStyle = pal.metalSteel;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx - 8, bY); ctx.lineTo(cx, bY - 38); ctx.lineTo(cx + 8, bY);
+        ctx.moveTo(cx - 5, bY - 18); ctx.lineTo(cx + 5, bY - 18);
+        ctx.moveTo(cx - 3, bY - 28); ctx.lineTo(cx + 3, bY - 28);
+        ctx.stroke();
+
+        // Microwave dishes
+        ctx.fillStyle = pal.metalSilver;
+        ctx.beginPath();
+        ctx.arc(cx - 6, bY - 22, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Dual FAA red beacons
+        ctx.fillStyle = pal.beaconRed;
+        ctx.fillRect(cx - 1, bY - 40, 3, 3);
+        ctx.fillStyle = pal.beaconRedCore;
+        ctx.fillRect(cx, bY - 39, 1, 1);
+
+      } else if (b.roofEquipment === 'water_tank_trestle') {
+        // Classic Rooftop Cedar Water Tower on Steel Trestle
+        const wtX = cx - 9;
+        const wtY = bY - 24;
+
+        // Steel stilt cross-bracing
+        ctx.strokeStyle = pal.metalDark;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(wtX + 2, bY); ctx.lineTo(wtX + 4, wtY + 12);
+        ctx.moveTo(wtX + 16, bY); ctx.lineTo(wtX + 14, wtY + 12);
+        ctx.moveTo(wtX + 2, bY); ctx.lineTo(wtX + 14, wtY + 12);
+        ctx.moveTo(wtX + 16, bY); ctx.lineTo(wtX + 4, wtY + 12);
+        ctx.stroke();
+
+        // Wooden drum
+        ctx.fillStyle = pal.woodWaterTank;
+        ctx.fillRect(wtX + 2, wtY + 2, 14, 10);
+        // Vertical staves
+        ctx.fillStyle = pal.woodWaterStaves;
+        for (let st = wtX + 4; st < wtX + 16; st += 3) {
+          ctx.fillRect(st, wtY + 2, 1.5, 10);
+        }
+        // Iron bands
+        ctx.fillStyle = pal.woodWaterBands;
+        ctx.fillRect(wtX + 2, wtY + 4, 14, 1);
+        ctx.fillRect(wtX + 2, wtY + 9, 14, 1);
+
+        // Conical roof cap
+        ctx.fillStyle = pal.metalSilver;
+        ctx.beginPath();
+        ctx.moveTo(wtX + 9, wtY - 3);
+        ctx.lineTo(wtX, wtY + 2);
+        ctx.lineTo(wtX + 18, wtY + 2);
+        ctx.closePath();
+        ctx.fill();
+
+      } else if (b.roofEquipment === 'chiller_louvers') {
+        // Commercial HVAC Cooling Tower with Air Intake Louvers
+        const chX = cx - 12;
+        const chY = bY - 12;
+
+        ctx.fillStyle = pal.hullSlateMid;
+        ctx.fillRect(chX, chY, 24, 12);
+        ctx.fillStyle = pal.hullSteelFrame;
+        ctx.strokeRect(chX, chY, 24, 12);
+
+        // Circular fan exhaust cowl
+        ctx.fillStyle = '#050811';
+        ctx.beginPath();
+        ctx.ellipse(chX + 12, chY + 2, 6, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Horizontal louver slats
+        ctx.fillStyle = pal.hullDarkest;
+        ctx.fillRect(chX + 3, chY + 5, 18, 1);
+        ctx.fillRect(chX + 3, chY + 7, 18, 1);
+        ctx.fillRect(chX + 3, chY + 9, 18, 1);
+
+      } else if (b.roofEquipment === 'penthouse_bulkhead') {
+        // Elevator Overrun & Stairwell Access Bulkhead
+        const phX = b.x + 6;
+        const phY = bY - 14;
+        ctx.fillStyle = pal.hullGraniteDark;
+        ctx.fillRect(phX, phY, 18, 14);
+        ctx.fillStyle = pal.hullConcreteLit;
+        ctx.fillRect(phX, phY, 18, 2);
+
+        // Metal service door
+        ctx.fillStyle = pal.metalDark;
+        ctx.fillRect(phX + 4, phY + 4, 5, 10);
+        // Small incandescent security fixture above door
+        ctx.fillStyle = pal.serviceLightWarm;
+        ctx.fillRect(phX + 5.5, phY + 2.5, 2, 1.5);
+
+      } else if (b.roofEquipment === 'stepped_crown') {
+        // Art Deco Stepped Spire Finial
+        ctx.fillStyle = b.accentColor;
+        ctx.fillRect(cx - 8, bY - 6, 16, 6);
+        ctx.fillRect(cx - 4, bY - 12, 8, 6);
+        ctx.fillStyle = pal.metalSilver;
+        ctx.fillRect(cx - 1, bY - 26, 2, 14);
+
+        // Red obstruction light
+        ctx.fillStyle = pal.beaconRed;
+        ctx.fillRect(cx - 1, bY - 28, 3, 3);
+        ctx.fillStyle = pal.beaconRedCore;
+        ctx.fillRect(cx, bY - 27, 1, 1);
+      }
+
+      // 4. Subtle Combat Damage (Smoldering floor on selected tower)
+      if (b.hasSmolderingDamage) {
+        const damY = bY + 16;
+        // Damaged dark breach
+        ctx.fillStyle = '#05070d';
+        ctx.fillRect(b.x + 8, damY, b.w - 16, 14);
+
+        // Twisted steel rebar
+        ctx.strokeStyle = pal.metalSteel;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(b.x + 10, damY); ctx.lineTo(b.x + 16, damY + 8);
+        ctx.moveTo(b.x + b.w - 12, damY); ctx.lineTo(b.x + b.w - 18, damY + 10);
+        ctx.stroke();
+
+        // Subtle glowing embers
+        ctx.fillStyle = '#ea580c';
+        ctx.fillRect(b.x + 12, damY + 8, 4, 2);
+        ctx.fillRect(b.x + 24, damY + 9, 3, 2);
+        ctx.fillStyle = pal.winWarmTungsten;
+        ctx.fillRect(b.x + 14, damY + 7, 2, 1.5);
+
+        // Delicate wispy smoke
+        const smokeGrad = ctx.createLinearGradient(cx, damY, cx, damY - 35);
+        smokeGrad.addColorStop(0, 'rgba(30, 41, 59, 0.45)');
+        smokeGrad.addColorStop(0.6, 'rgba(51, 65, 85, 0.18)');
+        smokeGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+        ctx.fillStyle = smokeGrad;
+        ctx.beginPath();
+        ctx.moveTo(cx - 4, damY);
+        ctx.lineTo(cx - 12, damY - 35);
+        ctx.lineTo(cx + 12, damY - 35);
+        ctx.lineTo(cx + 4, damY);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // 5. High-Voltage Power Utility Lines Draped Between Roofs
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.65)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < foregroundSkyscrapers.length - 1; i++) {
+      const b1 = foregroundSkyscrapers[i];
+      const b2 = foregroundSkyscrapers[i + 1];
+      const p1x = b1.x + b1.w - 2;
+      const p1y = 512 - b1.h;
+      const p2x = b2.x + 2;
+      const p2y = 512 - b2.h;
+      const midX = (p1x + p2x) / 2;
+      const midY = Math.max(p1y, p2y) + 8;
+
+      ctx.moveTo(p1x, p1y);
+      ctx.quadraticCurveTo(midX, midY, p2x, p2y);
+    }
+    ctx.stroke();
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+  
+  private static generateIndustrial() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    
+    ctx.fillStyle = '#1e1b4b';
+    ctx.fillRect(0, 0, 512, 256);
+    
+    // Industrial pipes & steel beams
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 12;
+    for (let y = 30; y < 256; y += 60) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(512, y);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#f59e0b';
+    for (let x = 40; x < 512; x += 120) {
+      ctx.fillRect(x, 0, 30, 256);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(x + 5, 20, 20, 20);
+      ctx.fillStyle = '#f59e0b';
+    }
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateCitadel() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 512, 256);
+    
+    // Red glowing void stars and alien citadel structures
+    for (let i = 0; i < 50; i++) {
+      ctx.fillStyle = Math.random() > 0.3 ? '#881337' : '#e11d48';
+      ctx.fillRect(Math.random() * 512, Math.random() * 256, 3, 3);
+    }
+
+    ctx.fillStyle = '#312e81';
+    for (let x = 0; x < 512; x += 160) {
+      ctx.beginPath();
+      ctx.moveTo(x, 256);
+      ctx.lineTo(x + 50, 40);
+      ctx.lineTo(x + 100, 256);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    const tex = this.createTextureFromCanvas(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  private static generateDrone() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 24;
+    canvas.height = 24;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Gradius-Style Option Support Drone
+    // Dark Outer Chassis Silhouette
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.arc(12, 12, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Gunmetal Armored Hull Ring
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(12, 12, 9.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.arc(12, 12, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cyan High-Energy Plasma Containment Ring
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.arc(12, 12, 6.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#00f0ff';
+    ctx.beginPath();
+    ctx.arc(12, 12, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hyper-Luminescent White Core
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(10.5, 10.5, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4 Symmetrical Vector Thrust Winglets with Micro Emitters
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(0, 10, 4, 4);
+    ctx.fillRect(20, 10, 4, 4);
+    ctx.fillRect(10, 0, 4, 4);
+    ctx.fillRect(10, 20, 4, 4);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(1, 11, 2, 2);
+    ctx.fillRect(21, 11, 2, 2);
+    ctx.fillRect(11, 1, 2, 2);
+    ctx.fillRect(11, 21, 2, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generatePowerup() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 28;
+    canvas.height = 28;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Radiant Powerup Crystal Capsule (Faceted Arcade Prism)
+    // Dark Outer Silhouette
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.moveTo(14, 1);
+    ctx.lineTo(27, 14);
+    ctx.lineTo(14, 27);
+    ctx.lineTo(1, 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // Magenta & Violet Radiant Aura
+    const auraGrad = ctx.createRadialGradient(14, 14, 2, 14, 14, 13);
+    auraGrad.addColorStop(0, '#ffffff');
+    auraGrad.addColorStop(0.3, '#f5d0fe');
+    auraGrad.addColorStop(0.6, '#d946ef');
+    auraGrad.addColorStop(0.9, '#a21caf');
+    auraGrad.addColorStop(1, '#4c0519');
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.moveTo(14, 3);
+    ctx.lineTo(25, 14);
+    ctx.lineTo(14, 25);
+    ctx.lineTo(3, 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // Prismatic Diamond Inner Core
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(14, 6);
+    ctx.lineTo(22, 14);
+    ctx.lineTo(14, 22);
+    ctx.lineTo(6, 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // Faceted Shading Bands
+    ctx.fillStyle = '#f0abfc';
+    ctx.beginPath();
+    ctx.moveTo(14, 6);
+    ctx.lineTo(22, 14);
+    ctx.lineTo(14, 14);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#c026d3';
+    ctx.beginPath();
+    ctx.moveTo(6, 14);
+    ctx.lineTo(14, 22);
+    ctx.lineTo(14, 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // High-Contrast 'P' Symbol
+    ctx.fillStyle = '#701a75';
+    ctx.font = '900 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('P', 14, 14.5);
+
+    // Specular Glint Stars
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(4, 13, 3, 2);
+    ctx.fillRect(13, 4, 2, 3);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateMissileTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 16;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Heavy Micro-Missile Fuselage
+    // Dark Silhouette
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.moveTo(31, 8);
+    ctx.lineTo(24, 2);
+    ctx.lineTo(6, 2);
+    ctx.lineTo(2, 6);
+    ctx.lineTo(2, 10);
+    ctx.lineTo(6, 14);
+    ctx.lineTo(24, 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // Missile Body (Crimson & Slate)
+    const bodyGrad = ctx.createLinearGradient(0, 3, 0, 13);
+    bodyGrad.addColorStop(0, '#f87171');
+    bodyGrad.addColorStop(0.4, '#dc2626');
+    bodyGrad.addColorStop(1, '#7f1d1d');
+    ctx.fillStyle = bodyGrad;
+    ctx.fillRect(8, 3, 16, 10);
+
+    // Rear Stabilizer Fins
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.moveTo(10, 3); ctx.lineTo(4, 0); ctx.lineTo(6, 3); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(10, 13); ctx.lineTo(4, 16); ctx.lineTo(6, 13); ctx.fill();
+
+    // Glowing Amber Warhead Tip
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.moveTo(30, 8);
+    ctx.lineTo(24, 3);
+    ctx.lineTo(24, 13);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(26, 7, 3, 2);
+
+    // Specular Highlight Streak
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(10, 5, 12, 2);
+
+    // Rear Thruster Ignition
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(0, 6, 3, 4);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(0, 7, 2, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateMissileUpgradedTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 44;
+    canvas.height = 22;
+    const ctx = canvas.getContext('2d')!;
+
+    // Outer plasma energy aura
+    const grad = ctx.createLinearGradient(0, 11, 44, 11);
+    grad.addColorStop(0, 'rgba(0, 255, 255, 0.9)');
+    grad.addColorStop(0.5, 'rgba(245, 158, 11, 0.9)');
+    grad.addColorStop(1, 'rgba(239, 68, 68, 1)');
+
+    // Main heavy fuselage
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(40, 11);
+    ctx.lineTo(12, 2);
+    ctx.lineTo(4, 11);
+    ctx.lineTo(12, 20);
+    ctx.closePath();
+    ctx.fill();
+
+    // Energy core body
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(42, 11);
+    ctx.lineTo(18, 5);
+    ctx.lineTo(12, 11);
+    ctx.lineTo(18, 17);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dual cyan wings
+    ctx.fillStyle = '#06b6d4';
+    ctx.beginPath();
+    ctx.moveTo(16, 2);
+    ctx.lineTo(24, 0);
+    ctx.lineTo(22, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(16, 20);
+    ctx.lineTo(24, 22);
+    ctx.lineTo(22, 17);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dual Thrusters
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(0, 5, 5, 4);
+    ctx.fillRect(0, 13, 5, 4);
+
+    // Glowing warhead tip & highlight stripe
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(38, 11, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(16, 10, 14, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateAsteroid(size: number) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+
+    const center = size / 2;
+    const radius = size / 2 - 4;
+
+    // Outer jagged rock shape
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    const numPoints = 9;
+    for (let i = 0; i < numPoints; i++) {
+      const angle = (i / numPoints) * Math.PI * 2;
+      const r = radius * (0.8 + (Math.sin(i * 3 + size) * 0.2));
+      const px = center + Math.cos(angle) * r;
+      const py = center + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner highlight / texture details
+    ctx.fillStyle = '#64748b';
+    ctx.beginPath();
+    ctx.arc(center - size * 0.1, center - size * 0.1, radius * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Craters
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.arc(center + size * 0.15, center + size * 0.1, radius * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(center - size * 0.2, center + size * 0.15, radius * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(center + size * 0.05, center - size * 0.2, radius * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rim highlight
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(center, center, radius * 0.85, Math.PI * 0.8, Math.PI * 1.4);
+    ctx.stroke();
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateGoldenAsteroid(size: number = 56) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+
+    const center = size / 2;
+    const radius = size / 2 - 4;
+
+    // Outer radial gold shine
+    const radGrad = ctx.createRadialGradient(center, center, 4, center, center, radius + 2);
+    radGrad.addColorStop(0, '#fef08a'); // sparkling center
+    radGrad.addColorStop(0.4, '#f59e0b'); // amber gold
+    radGrad.addColorStop(0.8, '#b45309'); // rich bronze-gold
+    radGrad.addColorStop(1, '#78350f'); // dark gold outline
+
+    ctx.fillStyle = radGrad;
+    ctx.beginPath();
+    const numPoints = 10;
+    for (let i = 0; i < numPoints; i++) {
+      const angle = (i / numPoints) * Math.PI * 2;
+      const r = radius * (0.8 + (Math.sin(i * 3 + size) * 0.2));
+      const px = center + Math.cos(angle) * r;
+      const py = center + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner metallic golden facets
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.arc(center - size * 0.1, center - size * 0.1, radius * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Craters / Gem facets
+    ctx.fillStyle = '#d97706';
+    ctx.beginPath();
+    ctx.arc(center + size * 0.15, center + size * 0.1, radius * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(center - size * 0.2, center + size * 0.15, radius * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bright sparkling highlight cross
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(center - size * 0.15, center - size * 0.15, radius * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Metallic rim stroke
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateTurretBaseTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 52;
+    canvas.height = 52;
+    const ctx = canvas.getContext('2d')!;
+
+    // Swivel pivot centered at (26, 26)
+    // 1. Heavy Base Dark Silhouette
+    ctx.fillStyle = '#030712';
+    ctx.beginPath();
+    ctx.moveTo(4, 50);
+    ctx.lineTo(48, 50);
+    ctx.lineTo(42, 28);
+    ctx.lineTo(10, 28);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Heavy Outrigger Stabilizer Feet (Anchored into Lunar Regolith)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(2, 44, 10, 6);
+    ctx.fillRect(40, 44, 10, 6);
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(4, 42, 6, 3);
+    ctx.fillRect(42, 42, 6, 3);
+
+    // Chrome Hydraulic Piston Struts
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(5, 34, 4, 8);
+    ctx.fillRect(43, 34, 4, 8);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(6, 34, 1, 8);
+    ctx.fillRect(44, 34, 1, 8);
+
+    // 3. Reinforced Trapezoidal Armor Chassis (Gunmetal Slate)
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(8, 48);
+    ctx.lineTo(44, 48);
+    ctx.lineTo(40, 30);
+    ctx.lineTo(12, 30);
+    ctx.closePath();
+    ctx.fill();
+
+    // Military Camouflage Armor Plate
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.moveTo(11, 46);
+    ctx.lineTo(41, 46);
+    ctx.lineTo(38, 32);
+    ctx.lineTo(14, 32);
+    ctx.closePath();
+    ctx.fill();
+
+    // 4. Yellow & Black Hazard Caution Stripes
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(14, 38, 24, 7);
+    ctx.fillStyle = '#eab308';
+    for (let x = 14; x < 38; x += 6) {
+      ctx.beginPath();
+      ctx.moveTo(x, 45);
+      ctx.lineTo(x + 3, 45);
+      ctx.lineTo(x + 5, 38);
+      ctx.lineTo(x + 2, 38);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 5. Heavy Steel Bolts & Fastener Rivets
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(10, 46, 2, 2);
+    ctx.fillRect(40, 46, 2, 2);
+    ctx.fillRect(14, 33, 2, 2);
+    ctx.fillRect(36, 33, 2, 2);
+
+    // 6. Turret Swivel Ring Collar Assembly at (26, 26)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(26, 26, 13, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.arc(26, 26, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Steel Ball Bearing Track
+    ctx.fillStyle = '#64748b';
+    ctx.beginPath();
+    ctx.arc(26, 26, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Center Swivel Axle Socket
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.arc(26, 26, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Power & Diagnostic LED Status Indicators
+    ctx.fillStyle = '#22c55e'; // Ready Green
+    ctx.fillRect(16, 46, 2, 2);
+    ctx.fillStyle = '#ef4444'; // Armed Red
+    ctx.fillRect(34, 46, 2, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateTurretLauncherTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 52;
+    canvas.height = 52;
+    const ctx = canvas.getContext('2d')!;
+
+    // Centered around (26, 26), oriented pointing directly along +X axis (right, angle = 0)
+    // 1. Dark Shadow Silhouette of Missile Pod
+    ctx.fillStyle = '#030712';
+    ctx.beginPath();
+    ctx.roundRect(10, 14, 38, 24, 4);
+    ctx.fill();
+
+    // 2. Rear Heavy Exhaust Blast Shield Deflector (left side, x = 10..18)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(10, 16, 8, 20);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(8, 18, 4, 16);
+    // Rear high-voltage conduit cables
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(10, 20, 5, 2);
+    ctx.fillRect(10, 30, 5, 2);
+
+    // 3. Main Armored Missile Pod Housing (x = 16..42, y = 15..37)
+    ctx.fillStyle = '#334155'; // Military Gunmetal Slate
+    ctx.beginPath();
+    ctx.roundRect(16, 15, 26, 22, 3);
+    ctx.fill();
+
+    // Top & Bottom Armor Bevel Plates
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(17, 16, 24, 4);
+    ctx.fillRect(17, 32, 24, 4);
+
+    // Specular Light Highlight Edge along top
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(18, 16, 22, 1);
+
+    // Heat Dissipation Cooling Louvers on Top/Bottom
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(20, 18, 3, 2);
+    ctx.fillRect(25, 18, 3, 2);
+    ctx.fillRect(30, 18, 3, 2);
+
+    // 4. Quad Missile Launch Tubes (Front Facing, extending from x = 38 to 48)
+    // Tube 1 (Top Upper)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(38, 17, 8, 4);
+    // Tube 2 (Top Lower)
+    ctx.fillRect(38, 22, 8, 4);
+    // Tube 3 (Bottom Upper)
+    ctx.fillRect(38, 27, 8, 4);
+    // Tube 4 (Bottom Lower)
+    ctx.fillRect(38, 32, 8, 4);
+
+    // Metallic Tube Rims
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(44, 16, 2, 6);
+    ctx.fillRect(44, 21, 2, 6);
+    ctx.fillRect(44, 26, 2, 6);
+    ctx.fillRect(44, 31, 2, 6);
+
+    // Armed Red & Amber Missile Warhead Tips (Protruding from tubes)
+    const drawWarhead = (y: number) => {
+      ctx.fillStyle = '#dc2626'; // Red Body
+      ctx.fillRect(42, y, 4, 3);
+      ctx.fillStyle = '#f59e0b'; // Amber Seeker Cone
+      ctx.beginPath();
+      ctx.moveTo(46, y);
+      ctx.lineTo(49, y + 1.5);
+      ctx.lineTo(46, y + 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fef08a'; // Specular needle tip
+      ctx.fillRect(48, y + 1, 1, 1);
+    };
+    drawWarhead(17.5);
+    drawWarhead(22.5);
+    drawWarhead(27.5);
+    drawWarhead(32.5);
+
+    // 5. Central Laser Guidance & Target Acquisition Optic Eye at (26, 26)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(26, 26, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(26, 26, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glowing Ruby Laser Sensor Lens
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(26, 26, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Laser Glint & Reticle
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(25, 25, 2, 2);
+
+    // Outer Target Laser Emitter Pointer (Front Sensor)
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(42, 25.5, 3, 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(44, 26, 1, 1);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateTurretTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 52;
+    canvas.height = 52;
+    const ctx = canvas.getContext('2d')!;
+
+    // Composite Turret Base + Launcher
+    const baseCanvas = document.createElement('canvas');
+    baseCanvas.width = 52;
+    baseCanvas.height = 52;
+    const launcherCanvas = document.createElement('canvas');
+    launcherCanvas.width = 52;
+    launcherCanvas.height = 52;
+
+    const baseTex = this.generateTurretBaseTexture();
+    const launcherTex = this.generateTurretLauncherTexture();
+
+    ctx.drawImage(baseTex.image as CanvasImageSource, 0, 0);
+    ctx.drawImage(launcherTex.image as CanvasImageSource, 0, 0);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateTurretLaser() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 28;
+    canvas.height = 12;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Heavy Plasma Beam Spindle (Magenta / Crimson)
+    // Outer Plasma Corona
+    const corona = ctx.createLinearGradient(0, 6, 28, 6);
+    corona.addColorStop(0, 'rgba(168, 85, 247, 0)');
+    corona.addColorStop(0.3, '#d946ef');
+    corona.addColorStop(0.8, '#f43f5e');
+    corona.addColorStop(1, '#ffffff');
+    ctx.fillStyle = corona;
+    ctx.beginPath();
+    ctx.moveTo(27, 6);
+    ctx.lineTo(8, 1);
+    ctx.lineTo(0, 6);
+    ctx.lineTo(8, 11);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dense High-Energy Core
+    ctx.fillStyle = '#fae8ff';
+    ctx.fillRect(8, 3, 16, 6);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(12, 4, 14, 4);
+
+    // Tip Specular Diamond
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(24, 5, 3, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateIonLaser() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 28;
+    canvas.height = 12;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Supercharged Ion Beam (Cyan / Azure)
+    const corona = ctx.createLinearGradient(0, 6, 28, 6);
+    corona.addColorStop(0, 'rgba(6, 182, 212, 0)');
+    corona.addColorStop(0.3, '#06b6d4');
+    corona.addColorStop(0.8, '#38bdf8');
+    corona.addColorStop(1, '#ffffff');
+    ctx.fillStyle = corona;
+    ctx.beginPath();
+    ctx.moveTo(27, 6);
+    ctx.lineTo(8, 1);
+    ctx.lineTo(0, 6);
+    ctx.lineTo(8, 11);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dense Ion Core
+    ctx.fillStyle = '#e0f2fe';
+    ctx.fillRect(8, 3, 16, 6);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(12, 4, 14, 4);
+
+    // Tip Specular Diamond
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(24, 5, 3, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateMoon() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    
+    const size = 256;
+    const center = 128;
+    const radius = 118;
+    const px = 2; // 2px pixel blocks for high-detail 16-bit arcade pixel art
+
+    // Major Craters List [cx, cy, r, hasRaySystem, hasCentralPeak, isDarkFloor]
+    const majorCraters = [
+      { cx: 24, cy: 56, r: 20, ray: true, peak: true, darkFloor: false },    // Tycho (South)
+      { cx: -52, cy: -18, r: 24, ray: true, peak: true, darkFloor: false },  // Copernicus (West)
+      { cx: -78, cy: -28, r: 14, ray: true, peak: false, darkFloor: false }, // Kepler
+      { cx: -18, cy: -72, r: 18, ray: false, peak: false, darkFloor: true }, // Plato (Dark Basalt Floor)
+      { cx: -62, cy: -46, r: 12, ray: true, peak: true, darkFloor: false },  // Aristarchus (Hotspot)
+      { cx: 68, cy: -22, r: 22, ray: false, peak: false, darkFloor: true },  // Mare Crisium (Isolated)
+      { cx: 38, cy: 12, r: 16, ray: false, peak: true, darkFloor: false },   // Theophilus
+      { cx: -28, cy: 22, r: 18, ray: false, peak: false, darkFloor: false },  // Ptolemaeus
+      { cx: 72, cy: 42, r: 15, ray: false, peak: false, darkFloor: false },   // Petavius
+      { cx: -90, cy: 18, r: 16, ray: false, peak: false, darkFloor: true },   // Grimaldi
+    ];
+
+    // Minor Craters
+    const minorCraters = [
+      { cx: -35, cy: -55, r: 9 }, { cx: 10, cy: -40, r: 10 }, { cx: 45, cy: -50, r: 8 },
+      { cx: -10, cy: -15, r: 11 }, { cx: 5, cy: 20, r: 9 }, { cx: -45, cy: 45, r: 12 },
+      { cx: -15, cy: 75, r: 14 }, { cx: 40, cy: 65, r: 10 }, { cx: 80, cy: 10, r: 9 },
+      { cx: -70, cy: 50, r: 11 }, { cx: 15, cy: -85, r: 8 }, { cx: -55, cy: -75, r: 10 },
+      { cx: 55, cy: -70, r: 9 }, { cx: -85, cy: -55, r: 7 }, { cx: 85, cy: -45, r: 8 }
+    ];
+
+    // Color Palette Bands (Lightest to Darkest)
+    const palette = [
+      '#ffffff', // 0: Pure Highlight (Peaks & Rims)
+      '#f1f5f9', // 1: Lit Ice Silver
+      '#e2e8f0', // 2: Light Highland Slate
+      '#cbd5e1', // 3: Mid Highland Gray
+      '#94a3b8', // 4: Deep Highland / Light Mare
+      '#64748b', // 5: Mare Transition Slate
+      '#475569', // 6: Mare Basalt Gray
+      '#334155', // 7: Dark Mare Basalt
+      '#1e293b', // 8: Deep Shadow Basalt
+      '#0f172a', // 9: Nightside Terminator Shadow
+      '#030712'  // 10: Pure Nightside Black
+    ];
+
+    // Light source vector (top-left, slightly front)
+    const lx = -0.55;
+    const ly = -0.55;
+    const lz = 0.62;
+
+    for (let y = 0; y < size; y += px) {
+      for (let x = 0; x < size; x += px) {
+        const dx = (x + px/2) - center;
+        const dy = (y + px/2) - center;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist <= radius) {
+          // 3D Sphere Normal
+          const z = Math.sqrt(radius * radius - dx * dx - dy * dy);
+          const nx = dx / radius;
+          const ny = dy / radius;
+          const nz = z / radius;
+
+          // Lambertian Illumination Dot Product
+          const NdotL = nx * lx + ny * ly + nz * lz;
+
+          // Base surface noise for Lunar Maria & Highlands
+          const n1 = Math.sin(dx * 0.035) * Math.cos(dy * 0.035);
+          const n2 = Math.sin((dx * 0.07 + 1.2) * (dy * 0.05 - 0.8));
+          const n3 = Math.cos(dx * 0.12 - dy * 0.09);
+          const noise = n1 * 0.5 + n2 * 0.35 + n3 * 0.15;
+
+          // Maria Probability Distribution
+          let isMare = false;
+          let mareIntensity = 0;
+
+          // Oceanus Procellarum & Mare Imbrium (Left / Upper-Left)
+          const distProcellarum = Math.sqrt((dx + 45)*(dx + 45) + (dy + 15)*(dy + 15));
+          if (distProcellarum < 75) {
+            isMare = true;
+            mareIntensity = Math.max(mareIntensity, (1 - distProcellarum / 75) * 0.8);
+          }
+
+          // Mare Tranquillitatis & Serenitatis (Top Right)
+          const distTranquil = Math.sqrt((dx - 35)*(dx - 35) + (dy + 35)*(dy + 35));
+          if (distTranquil < 55) {
+            isMare = true;
+            mareIntensity = Math.max(mareIntensity, (1 - distTranquil / 55) * 0.75);
+          }
+
+          // Mare Nubium (Lower Center-Left)
+          const distNubium = Math.sqrt((dx + 15)*(dx + 15) + (dy - 35)*(dy - 35));
+          if (distNubium < 45) {
+            isMare = true;
+            mareIntensity = Math.max(mareIntensity, (1 - distNubium / 45) * 0.7);
+          }
+
+          // Mare Crisium (Isolated East)
+          const distCrisium = Math.sqrt((dx - 68)*(dx - 68) + (dy + 22)*(dy + 22));
+          if (distCrisium < 22) {
+            isMare = true;
+            mareIntensity = Math.max(mareIntensity, (1 - distCrisium / 22) * 0.9);
+          }
+
+          if (noise > 0.25) {
+            isMare = true;
+            mareIntensity = Math.max(mareIntensity, (noise - 0.25) * 0.6);
+          }
+
+          // Tycho & Copernicus Ejecta Ray System
+          let rayHighlight = 0;
+          // Tycho Rays
+          const tychoDx = dx - 24;
+          const tychoDy = dy - 56;
+          const tychoDist = Math.sqrt(tychoDx*tychoDx + tychoDy*tychoDy);
+          if (tychoDist > 20 && tychoDist < 110) {
+            const angle = Math.atan2(tychoDy, tychoDx);
+            const rayPattern = Math.abs(Math.sin(angle * 8));
+            if (rayPattern > 0.88) {
+              rayHighlight += (rayPattern - 0.88) * 6 * (1 - tychoDist / 110);
+            }
+          }
+
+          // Copernicus Rays
+          const copDx = dx + 52;
+          const copDy = dy + 18;
+          const copDist = Math.sqrt(copDx*copDx + copDy*copDy);
+          if (copDist > 24 && copDist < 80) {
+            const angle = Math.atan2(copDy, copDx);
+            const rayPattern = Math.abs(Math.sin(angle * 6 + 0.4));
+            if (rayPattern > 0.85) {
+              rayHighlight += (rayPattern - 0.85) * 5 * (1 - copDist / 80);
+            }
+          }
+
+          // Calculate Shading Level (0 to 10)
+          let val = NdotL * 0.5 + 0.5; // 0 to 1
+
+          if (isMare) {
+            val -= mareIntensity * 0.32;
+          } else {
+            val += 0.08; // Highlands are brighter
+          }
+
+          val += rayHighlight * 0.15;
+
+          // Crater Modifications
+          let craterOffset = 0;
+
+          // Check Major Craters
+          for (const crater of majorCraters) {
+            const cdx = dx - crater.cx;
+            const cdy = dy - crater.cy;
+            const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+
+            if (cdist <= crater.r) {
+              if (cdist >= crater.r - 3) {
+                // Rim Wall
+                const rimAngle = cdx * lx + cdy * ly;
+                if (rimAngle < 0) {
+                  craterOffset += 0.35; // Lit rim wall
+                } else {
+                  craterOffset -= 0.30; // Shadowed rim wall
+                }
+              } else {
+                // Interior Floor
+                if (crater.darkFloor) {
+                  craterOffset -= 0.35;
+                } else {
+                  const intAngle = cdx * lx + cdy * ly;
+                  if (intAngle > 0) {
+                    craterOffset -= 0.22; // Interior rim shadow
+                  } else {
+                    craterOffset += 0.05;
+                  }
+                  if (crater.peak && cdist < 3) {
+                    craterOffset += 0.40; // Central peak highlight
+                  }
+                }
+              }
+            }
+          }
+
+          // Check Minor Craters
+          for (const crater of minorCraters) {
+            const cdx = dx - crater.cx;
+            const cdy = dy - crater.cy;
+            const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+
+            if (cdist <= crater.r) {
+              if (cdist >= crater.r - 2) {
+                const rimAngle = cdx * lx + cdy * ly;
+                craterOffset += (rimAngle < 0) ? 0.22 : -0.20;
+              } else {
+                craterOffset -= 0.15;
+              }
+            }
+          }
+
+          val += craterOffset;
+
+          // Map val (range ~ -0.3 to 1.3) into discrete palette index 0 to 10
+          let paletteIndex = Math.floor((1 - val) * 9);
+          paletteIndex = Math.max(0, Math.min(10, paletteIndex));
+
+          // Apply 2x2 Checkerboard Dithering on index transitions for retro 16-bit aesthetic
+          const fraction = ((1 - val) * 9) - paletteIndex;
+          const dither = ((x / px + y / px) % 2 === 0);
+          if (fraction > 0.65 && dither && paletteIndex < 10) {
+            paletteIndex += 1;
+          }
+
+          // Edge Limb Atmosphere Glow (Lit edge)
+          if (dist >= radius - 3 && NdotL > 0.1) {
+            ctx.fillStyle = '#e0f2fe'; // Crisp atmospheric rim
+          } else {
+            ctx.fillStyle = palette[paletteIndex];
+          }
+
+          ctx.fillRect(x, y, px, px);
+        }
+      }
+    }
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateBlastDoorTop() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 120;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d')!;
+
+    // Heavy Industrial Steel Vault Shutter (Top Half)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 120, 300);
+
+    // Steel armor panels with rivets
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(8, 8, 104, 284);
+
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(16, 16, 88, 268);
+
+    // Diagonal Hazard Stripes along bottom seam (y = 260 to 300)
+    ctx.fillStyle = '#eab308';
+    for (let x = -20; x < 140; x += 30) {
+      ctx.beginPath();
+      ctx.moveTo(x, 260);
+      ctx.lineTo(x + 20, 260);
+      ctx.lineTo(x + 5, 300);
+      ctx.lineTo(x - 15, 300);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Heavy steel seam border
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, 112, 292);
+
+    // Rivets
+    ctx.fillStyle = '#94a3b8';
+    for (let y = 20; y < 280; y += 40) {
+      ctx.fillRect(12, y, 6, 6);
+      ctx.fillRect(102, y, 6, 6);
+    }
+
+    // Glowing cyan hydraulic core line
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillRect(56, 20, 8, 240);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateBlastDoorBottom() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 120;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d')!;
+
+    // Heavy Industrial Steel Vault Shutter (Bottom Half)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 120, 300);
+
+    // Steel armor panels
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(8, 8, 104, 284);
+
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(16, 16, 88, 268);
+
+    // Diagonal Hazard Stripes along top seam (y = 0 to 40)
+    ctx.fillStyle = '#eab308';
+    for (let x = -20; x < 140; x += 30) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + 20, 0);
+      ctx.lineTo(x + 5, 40);
+      ctx.lineTo(x - 15, 40);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Steel seam border
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, 112, 292);
+
+    // Rivets
+    ctx.fillStyle = '#94a3b8';
+    for (let y = 20; y < 280; y += 40) {
+      ctx.fillRect(12, y, 6, 6);
+      ctx.fillRect(102, y, 6, 6);
+    }
+
+    // Glowing cyan hydraulic core line
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillRect(56, 40, 8, 240);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateBlastDoorFrame() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 160;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.clearRect(0, 0, 160, 600);
+
+    // Left Frame Pillar (X = 0 to 30)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 30, 600);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(4, 0, 22, 600);
+
+    // Right Frame Pillar (X = 130 to 160)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(130, 0, 30, 600);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(134, 0, 22, 600);
+
+    // Top Header Arch (Y = 0 to 40)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 160, 40);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(10, 8, 140, 24);
+
+    // Bottom Threshold Arch (Y = 560 to 600)
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 560, 160, 40);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(10, 568, 140, 24);
+
+    // Hazard warning bands on pillars
+    ctx.fillStyle = '#eab308';
+    for (let y = 60; y < 540; y += 120) {
+      ctx.fillRect(2, y, 26, 20);
+      ctx.fillRect(132, y, 26, 20);
+    }
+
+    // Steel borders
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, 26, 596);
+    ctx.strokeRect(132, 2, 26, 596);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateSubbossGatekeeperTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 110;
+    canvas.height = 110;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-bit Titan Gatekeeper Mech Armor (Dark Charcoal & Crimson Details)
+    ctx.shadowColor = 'rgba(239, 68, 68, 0.6)';
+    ctx.shadowBlur = 12;
+
+    // Main Chassis
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(10, 55);    // Front nose shield
+    ctx.lineTo(40, 15);    // Top shoulder pod
+    ctx.lineTo(85, 10);    // Top back
+    ctx.lineTo(105, 30);   // Back top fin
+    ctx.lineTo(95, 55);    // Back center thruster
+    ctx.lineTo(105, 80);   // Back bottom fin
+    ctx.lineTo(85, 100);   // Bottom back
+    ctx.lineTo(40, 95);    // Bottom shoulder pod
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // Heavy Plating (Dark Steel)
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.moveTo(25, 55);
+    ctx.lineTo(50, 25);
+    ctx.lineTo(80, 25);
+    ctx.lineTo(75, 55);
+    ctx.lineTo(80, 85);
+    ctx.lineTo(50, 85);
+    ctx.closePath();
+    ctx.fill();
+
+    // Crimson Command Armor Accents
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(45, 18, 30, 8);
+    ctx.fillRect(45, 84, 30, 8);
+
+    // Twin Heavy Plasma Cannons (Top & Bottom)
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(0, 28, 35, 12);
+    ctx.fillRect(0, 70, 35, 12);
+
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillRect(2, 32, 8, 4);
+    ctx.fillRect(2, 74, 8, 4);
+
+    // Glowing Cyber Sensor Visor
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.ellipse(35, 55, 12, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(30, 55, 4, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Twin Booster Thruster Flames
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath();
+    ctx.moveTo(95, 45);
+    ctx.lineTo(110, 55);
+    ctx.lineTo(95, 65);
+    ctx.closePath();
+    ctx.fill();
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateBlastDoorHorizontalPanel() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 150;
+    canvas.height = 60;
+    const ctx = canvas.getContext('2d')!;
+
+    // Dark industrial lunar floor panel
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 150, 60);
+
+    // Steel armor plate body
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(4, 4, 142, 52);
+
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(8, 8, 134, 44);
+
+    // Diagonal Yellow Hazard Warning Stripes along right meeting edge (x = 110 to 150)
+    ctx.fillStyle = '#eab308';
+    for (let y = -20; y < 80; y += 20) {
+      ctx.beginPath();
+      ctx.moveTo(110, y);
+      ctx.lineTo(125, y);
+      ctx.lineTo(150, y + 25);
+      ctx.lineTo(135, y + 25);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Border
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, 146, 56);
+
+    // Rivets
+    ctx.fillStyle = '#94a3b8';
+    for (let x = 15; x < 135; x += 30) {
+      ctx.fillRect(x, 6, 4, 4);
+      ctx.fillRect(x, 50, 4, 4);
+    }
+
+    // Glowing cyan hydraulic pressure pipe
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillRect(10, 28, 130, 4);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateBlastDoorHorizontalFrame() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 360;
+    canvas.height = 80;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.clearRect(0, 0, 360, 80);
+
+    // Lunar Silo Outer Girder Frame
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, 50, 80); // Left housing
+    ctx.fillRect(310, 0, 50, 80); // Right housing
+    ctx.fillRect(0, 0, 360, 20); // Top lip girder
+
+    // Yellow Hazard Stripes along top lip
+    ctx.fillStyle = '#eab308';
+    for (let x = 0; x < 360; x += 30) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + 12, 0);
+      ctx.lineTo(x + 6, 20);
+      ctx.lineTo(x - 6, 20);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Chrome hydraulic cylinders on housing
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(50, 25, 40, 12);
+    ctx.fillRect(270, 25, 40, 12);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(50, 28, 40, 4);
+    ctx.fillRect(270, 28, 40, 4);
+
+    // Border highlights
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 0, 50, 80);
+    ctx.strokeRect(310, 0, 50, 80);
+    ctx.strokeRect(0, 0, 360, 20);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateBlastDoorHorizontalShaft() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 300;
+    canvas.height = 160;
+    const ctx = canvas.getContext('2d')!;
+
+    // Deep subterranean abyss gradient (dark fading to cavern darkness)
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 160);
+    bgGrad.addColorStop(0, '#0f172a');
+    bgGrad.addColorStop(0.4, '#090d16');
+    bgGrad.addColorStop(1, '#020408');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 300, 160);
+
+    // Steel vertical elevator guide rails on left and right walls
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(10, 0, 20, 160);
+    ctx.fillRect(270, 0, 20, 160);
+
+    // Glowing cyan status indicator lights along guide rails going down into the moon
+    ctx.fillStyle = '#00f0ff';
+    for (let y = 10; y < 160; y += 30) {
+      ctx.fillRect(16, y, 8, 12);
+      ctx.fillRect(276, y, 8, 12);
+    }
+
+    // Red warning lights deeper down
+    ctx.fillStyle = '#ef4444';
+    for (let y = 25; y < 160; y += 30) {
+      ctx.fillRect(16, y, 8, 4);
+      ctx.fillRect(276, y, 8, 4);
+    }
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateUkLaunchpadTarmac() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 160;
+    const ctx = canvas.getContext('2d')!;
+
+    // Dark military steel armor & tarmac asphalt foundation
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 800, 160);
+
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(8, 8, 784, 144);
+
+    // Steel floor grids & reinforced armor panels
+    ctx.fillStyle = '#334155';
+    for (let x = 0; x < 800; x += 64) {
+      ctx.fillRect(x, 0, 2, 160);
+    }
+    for (let y = 0; y < 160; y += 32) {
+      ctx.fillRect(0, y, 800, 2);
+    }
+
+    // Yellow & Black Diagonal Hazard Caution Stripes on Top & Bottom Borders
+    ctx.fillStyle = '#f59e0b';
+    for (let x = 0; x < 800; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0); ctx.lineTo(x + 16, 0); ctx.lineTo(x + 8, 16); ctx.lineTo(x - 8, 16);
+      ctx.closePath(); ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(x, 144); ctx.lineTo(x + 16, 144); ctx.lineTo(x + 8, 160); ctx.lineTo(x - 8, 160);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = '#0f172a';
+    for (let x = 16; x < 800; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0); ctx.lineTo(x + 16, 0); ctx.lineTo(x + 8, 16); ctx.lineTo(x - 8, 16);
+      ctx.closePath(); ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(x, 144); ctx.lineTo(x + 16, 144); ctx.lineTo(x + 8, 160); ctx.lineTo(x - 8, 160);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Main Launch Apron Marking (Center x = 292, where ship launches)
+    const cx = 292;
+    const cy = 80;
+
+    // Outer Dark Slate Circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, 64, 0, Math.PI * 2);
+    ctx.fillStyle = '#334155';
+    ctx.fill();
+
+    // Middle Warning Yellow Circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, 42, 0, Math.PI * 2);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fill();
+
+    // Center Red Circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+    ctx.fillStyle = '#ef4444';
+    ctx.fill();
+
+    // Guidance runways & border markings
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(cx - 220, 20, 440, 120);
+
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx - 200, 28, 400, 104);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('GLOBAL EARTH DEFENSE BASE - LAUNCH PAD 01', cx, 148);
+    ctx.fillText('01', cx - 150, 88);
+    ctx.fillText('01', cx + 150, 88);
+
+    // Blast Exhaust Vent Grates under ship
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(cx - 70, 36, 140, 88);
+    ctx.fillStyle = '#38bdf8';
+    for (let y = 40; y < 124; y += 8) {
+      ctx.fillRect(cx - 66, y, 132, 3);
+    }
+
+    // Glowing Runway Beacon LEDs (Cyan & Amber)
+    for (let x = 40; x < 760; x += 80) {
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(x, 20, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath(); ctx.arc(x, 140, 5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateUkLaunchpadGantry() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 140;
+    const ctx = canvas.getContext('2d')!;
+
+    // Red military steel truss gantry arm
+    ctx.fillStyle = '#991b1b';
+    ctx.fillRect(16, 0, 32, 140);
+
+    // Cross brace truss lines
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 3;
+    for (let y = 0; y < 140; y += 24) {
+      ctx.beginPath();
+      ctx.moveTo(16, y); ctx.lineTo(48, y + 24);
+      ctx.moveTo(48, y); ctx.lineTo(16, y + 24);
+      ctx.stroke();
+    }
+
+    // Chrome hydraulic cylinder clamp
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(0, 52, 28, 20);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(0, 56, 28, 10);
+
+    // Red rubber cushion grip pad
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(0, 48, 8, 28);
+
+    // Warning Strobe LED on top
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(20, 2, 24, 10);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateUkLaunchpadTower() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 240;
+    canvas.height = 360;
+    const ctx = canvas.getContext('2d')!;
+
+    // Realistic structural foundation and concrete columns
+    const baseGrad = ctx.createLinearGradient(0, 80, 0, 360);
+    baseGrad.addColorStop(0, '#1e293b');
+    baseGrad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = baseGrad;
+    ctx.fillRect(10, 80, 220, 280);
+
+    // Thick reinforced corner pillars with shading
+    const pillarGrad = ctx.createLinearGradient(10, 0, 40, 0);
+    pillarGrad.addColorStop(0, '#334155');
+    pillarGrad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = pillarGrad;
+    ctx.fillRect(10, 80, 30, 280);
+    
+    const pillarGrad2 = ctx.createLinearGradient(200, 0, 230, 0);
+    pillarGrad2.addColorStop(0, '#1e293b');
+    pillarGrad2.addColorStop(1, '#334155');
+    ctx.fillStyle = pillarGrad2;
+    ctx.fillRect(200, 80, 30, 280);
+
+    // Layered industrial facade panels
+    ctx.fillStyle = '#475569';
+    for (let y = 100; y < 340; y += 50) {
+      ctx.fillRect(50, y, 140, 40);
+      
+      // Panel details (grates and seams)
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(60, y + 10, 120, 2);
+      ctx.fillRect(60, y + 20, 120, 2);
+      ctx.fillRect(60, y + 30, 120, 2);
+      ctx.fillStyle = '#475569';
+      
+      // Side panel rivets
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(52, y + 4, 4, 4);
+      ctx.fillRect(184, y + 4, 4, 4);
+      ctx.fillRect(52, y + 32, 4, 4);
+      ctx.fillRect(184, y + 32, 4, 4);
+    }
+
+    // Massive Blast Doors at bottom (Hangar entrance)
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(80, 260, 80, 100);
+    ctx.strokeStyle = '#f59e0b'; // hazard border around doors
+    ctx.lineWidth = 2;
+    ctx.strokeRect(78, 258, 84, 102);
+
+    // Left and right hangar door panels
+    const doorGrad = ctx.createLinearGradient(80, 0, 160, 0);
+    doorGrad.addColorStop(0, '#334155');
+    doorGrad.addColorStop(0.48, '#1e293b');
+    doorGrad.addColorStop(0.5, '#0f172a'); // middle seam
+    doorGrad.addColorStop(0.52, '#1e293b');
+    doorGrad.addColorStop(1, '#334155');
+    ctx.fillStyle = doorGrad;
+    ctx.fillRect(80, 260, 80, 100);
+    
+    // Warning chevrons on doors
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(80, 280); ctx.lineTo(118, 300); ctx.lineTo(80, 320);
+    ctx.moveTo(160, 280); ctx.lineTo(122, 300); ctx.lineTo(160, 320);
+    ctx.stroke();
+
+    // Multi-level Glass command center up top
+    ctx.fillStyle = '#0c4a6e'; // Deep cyan glass base
+    ctx.fillRect(20, 40, 200, 60);
+    
+    const glassGrad = ctx.createLinearGradient(20, 40, 20, 100);
+    glassGrad.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+    glassGrad.addColorStop(1, 'rgba(2, 132, 199, 0.8)');
+    ctx.fillStyle = glassGrad;
+    ctx.fillRect(26, 46, 188, 48);
+
+    // Sturdy Window frames and mullions
+    ctx.fillStyle = '#0f172a';
+    for (let x = 26; x < 210; x += 30) {
+      ctx.fillRect(x, 40, 6, 60);
+    }
+    // Horizontal window divider
+    ctx.fillRect(20, 66, 200, 4);
+
+    // Glowing screens inside command center (behind glass)
+    ctx.fillStyle = 'rgba(14, 165, 233, 0.8)';
+    ctx.fillRect(40, 75, 20, 12);
+    ctx.fillRect(90, 75, 40, 14);
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.8)'; // Red tactical screen
+    ctx.fillRect(150, 75, 25, 12);
+
+    // Roof radar mast & communication array
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(114, 0, 12, 40);
+    ctx.fillRect(70, 16, 100, 4);
+    
+    // Satelite dishes
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath(); ctx.arc(80, 10, 12, 0, Math.PI, true); ctx.fill();
+    ctx.beginPath(); ctx.arc(160, 10, 16, 0, Math.PI, true); ctx.fill();
+    // Dish feed horns
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(79, -2, 2, 8);
+    ctx.fillRect(159, -6, 2, 12);
+
+    // Red aviation strobe light on mast tip
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(120, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    // Strobe glow
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+    ctx.beginPath(); ctx.arc(120, 0, 16, 0, Math.PI * 2); ctx.fill();
+    
+    // Earth Defense Globe Emblem on tower face
+    const fx = 120;
+    const fy = 160;
+    
+    // Globe backing and glow
+    ctx.fillStyle = 'rgba(2, 132, 199, 0.3)';
+    ctx.beginPath(); ctx.arc(fx, fy, 28, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath(); ctx.arc(fx, fy, 25, 0, Math.PI * 2); ctx.fill();
+    
+    // Continents
+    ctx.fillStyle = '#34d399';
+    ctx.beginPath(); ctx.arc(fx - 5, fy - 5, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(fx + 8, fy + 8, 12, 0, Math.PI * 2); ctx.fill();
+    
+    // Globe Grid
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(fx, fy, 25, 0, Math.PI * 2);
+    ctx.moveTo(fx - 25, fy); ctx.lineTo(fx + 25, fy);
+    ctx.moveTo(fx, fy - 25); ctx.lineTo(fx, fy + 25);
+    ctx.stroke();
+
+    // Text below emblem
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('COMMAND', 120, 204);
+    ctx.fillText('CENTER', 120, 218);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateUkLaunchpadBanner() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 280;
+    canvas.height = 72;
+    const ctx = canvas.getContext('2d')!;
+
+    // Metallic frame
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, 280, 72);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(4, 4, 272, 64);
+
+    // Globe Emblem on left
+    const cx = 40;
+    const cy = 36;
+    
+    // Outer globe glow
+    ctx.fillStyle = '#0ea5e9';
+    ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2); ctx.fill();
+
+    // Abstract continents
+    ctx.fillStyle = '#34d399';
+    ctx.beginPath(); ctx.arc(cx - 6, cy - 4, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 6, cy + 6, 7, 0, Math.PI * 2); ctx.fill();
+    
+    // Crosshairs
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 24, cy); ctx.lineTo(cx + 24, cy);
+    ctx.moveTo(cx, cy - 24); ctx.lineTo(cx, cy + 24);
+    ctx.stroke();
+    
+    // Orbital ring
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(cx, cy, 26, 8, Math.PI / 8, 0, Math.PI * 2); ctx.stroke();
+
+    // Text "EARTH DEFENSE FORCE" & "GLOBAL COMMAND"
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('EARTH DEFENSE FORCE', 80, 32);
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('GLOBAL COMMAND - SEC 01', 80, 52);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateUkLaunchpadSilo() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 240;
+    canvas.height = 280;
+    const ctx = canvas.getContext('2d')!;
+
+    // Dark industrial foundation and structural struts
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(10, 150, 220, 130);
+
+    // Support pillars
+    const pillarGrad = ctx.createLinearGradient(0, 0, 30, 0);
+    pillarGrad.addColorStop(0, '#1e293b');
+    pillarGrad.addColorStop(1, '#020617');
+    ctx.fillStyle = pillarGrad;
+    ctx.fillRect(20, 160, 30, 120);
+    ctx.fillRect(190, 160, 30, 120);
+    
+    // Diagonal crossbeams
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.moveTo(50, 160); ctx.lineTo(190, 280);
+    ctx.moveTo(190, 160); ctx.lineTo(50, 280);
+    ctx.stroke();
+
+    // Twin High-Pressure Hypergolic Fuel Spheres
+    const drawSphere = (cx: number, cy: number, r: number, colorMode: 'fuel' | 'ox') => {
+      // Core shadow sphere
+      ctx.fillStyle = '#020617';
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+      // Main specular gradient
+      const grad = ctx.createRadialGradient(cx - r * 0.4, cy - r * 0.4, r * 0.1, cx, cy, r);
+      if (colorMode === 'ox') {
+        grad.addColorStop(0, '#bae6fd'); // bright blue specular
+        grad.addColorStop(0.3, '#0284c7');
+        grad.addColorStop(0.8, '#0f172a');
+        grad.addColorStop(1, '#020617');
+      } else {
+        grad.addColorStop(0, '#fde68a'); // amber specular
+        grad.addColorStop(0.3, '#d97706');
+        grad.addColorStop(0.8, '#1e293b');
+        grad.addColorStop(1, '#0f172a');
+      }
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+      // Steel reinforcement belts with metallic reflections
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.3, 0, 0, Math.PI * 2); ctx.stroke();
+      
+      // Shadow overlap on belts
+      ctx.strokeStyle = 'rgba(2, 6, 23, 0.6)';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.3, 0, 0, Math.PI); ctx.stroke();
+    };
+
+    // Draw Spheres (Liquid Oxygen and Hydrazine)
+    drawSphere(70, 100, 50, 'ox');
+    drawSphere(170, 100, 50, 'fuel');
+
+    // Complex Connecting Pipe Lines & Control Valves
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(70, 150, 20, 40);
+    ctx.fillRect(150, 150, 20, 40);
+
+    // Thick feed pipes
+    const pipeGrad = ctx.createLinearGradient(0, 170, 0, 190);
+    pipeGrad.addColorStop(0, '#1e293b');
+    pipeGrad.addColorStop(0.5, '#cbd5e1');
+    pipeGrad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = pipeGrad;
+    ctx.fillRect(40, 170, 160, 20);
+    
+    // Red and Blue banded valve markings
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(80, 166, 12, 28);
+    ctx.fillStyle = '#0ea5e9';
+    ctx.fillRect(148, 166, 12, 28);
+    
+    // Industrial Hazard Caution Plate
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(35, 210, 170, 50);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(39, 214, 162, 42);
+
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('DANGER - HIGH PRESSURE', 120, 230);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('HYPERGOLIC RESERVOIR', 120, 246);
+
+    // Modern Phase-Array Radar Dome on top of silo structure
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(110, 30, 20, 30);
+    
+    const domeGrad = ctx.createLinearGradient(95, 0, 145, 0);
+    domeGrad.addColorStop(0, '#e2e8f0');
+    domeGrad.addColorStop(0.8, '#64748b');
+    domeGrad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = domeGrad;
+    ctx.beginPath(); ctx.arc(120, 35, 30, Math.PI, 0); ctx.fill();
+    
+    // Radar dome seam lines
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(120, 35, 20, Math.PI, 0); ctx.stroke();
+    
+    // Antenna array
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(118, 0, 4, 35);
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(120, 0, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+    ctx.beginPath(); ctx.arc(120, 0, 14, 0, Math.PI * 2); ctx.fill();
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateSolarDockBackground() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.clearRect(0, 0, 800, 400);
+
+    // Subtle cosmic nebula ambient glow
+    const grad1 = ctx.createRadialGradient(250, 150, 20, 250, 150, 260);
+    grad1.addColorStop(0, 'rgba(6, 182, 212, 0.18)');
+    grad1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad1;
+    ctx.fillRect(0, 0, 800, 400);
+
+    const grad2 = ctx.createRadialGradient(620, 280, 20, 620, 280, 220);
+    grad2.addColorStop(0, 'rgba(245, 158, 11, 0.15)');
+    grad2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad2;
+    ctx.fillRect(0, 0, 800, 400);
+
+    // Orbital Docking Truss Structural Lattice (Girders across upper & lower backdrop)
+    ctx.strokeStyle = 'rgba(51, 65, 85, 0.7)';
+    ctx.lineWidth = 4;
+
+    // Top Truss Beam
+    ctx.beginPath();
+    ctx.moveTo(0, 50); ctx.lineTo(800, 50);
+    ctx.moveTo(0, 80); ctx.lineTo(800, 80);
+    for (let x = 0; x < 800; x += 60) {
+      ctx.moveTo(x, 50); ctx.lineTo(x + 30, 80);
+      ctx.moveTo(x + 30, 80); ctx.lineTo(x + 60, 50);
+    }
+    ctx.stroke();
+
+    // Bottom Truss Beam
+    ctx.beginPath();
+    ctx.moveTo(0, 320); ctx.lineTo(800, 320);
+    ctx.moveTo(0, 350); ctx.lineTo(800, 350);
+    for (let x = 0; x < 800; x += 60) {
+      ctx.moveTo(x, 320); ctx.lineTo(x + 30, 350);
+      ctx.moveTo(x + 30, 350); ctx.lineTo(x + 60, 320);
+    }
+    ctx.stroke();
+
+    // High Orbit Solar Panel Arrays (Floating Array 1: X=120 to 280)
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(120, 20, 160, 24);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(120, 20, 160, 24);
+    for (let x = 140; x < 280; x += 20) {
+      ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, 44); ctx.stroke();
+    }
+
+    // Solar Panel Array 2: X=520 to 680 (Bottom)
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(520, 356, 160, 24);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(520, 356, 160, 24);
+    for (let x = 540; x < 680; x += 20) {
+      ctx.beginPath(); ctx.moveTo(x, 356); ctx.lineTo(x, 380); ctx.stroke();
+    }
+
+    // Glowing Cyan Beacon Lights along trusses
+    ctx.fillStyle = '#00f0ff';
+    for (let x = 30; x < 800; x += 120) {
+      ctx.beginPath(); ctx.arc(x, 50, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 60, 350, 4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Space Relay Satellite Silhouette at X = 380, Y = 180
+    ctx.fillStyle = 'rgba(30, 41, 59, 0.85)';
+    ctx.fillRect(380, 160, 40, 40);
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(320, 172, 50, 16);
+    ctx.fillRect(430, 172, 50, 16);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(320, 172, 50, 16);
+    ctx.strokeRect(430, 172, 50, 16);
+    ctx.fillStyle = '#06b6d4';
+    ctx.beginPath(); ctx.arc(400, 180, 8, 0, Math.PI * 2); ctx.fill();
+
+    return this.createTextureFromCanvas(canvas);
+  }
+
+  private static generateSolarMineTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d')!;
+
+    // 16-Bit Proximity Space Navigational Mine
+    // 1. Dark Silhouette & Hazard Spikes
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.arc(24, 24, 16, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 8 Faceted Proximity Sensor Spikes
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const xTip = 24 + Math.cos(a) * 23;
+      const yTip = 24 + Math.sin(a) * 23;
+      const xL = 24 + Math.cos(a - 0.25) * 14;
+      const yL = 24 + Math.sin(a - 0.25) * 14;
+      const xR = 24 + Math.cos(a + 0.25) * 14;
+      const yR = 24 + Math.sin(a + 0.25) * 14;
+
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(xTip, yTip);
+      ctx.lineTo(xL, yL);
+      ctx.lineTo(xR, yR);
+      ctx.closePath();
+      ctx.fill();
+
+      // Spike core energy needle
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(24 + Math.cos(a) * 12, 24 + Math.sin(a) * 12);
+      ctx.lineTo(xTip, yTip);
+      ctx.stroke();
+
+      // Glowing tip diode
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillRect(xTip - 1.5, yTip - 1.5, 3, 3);
+    }
+
+    // 2. Heavy Armored Spherical Hull (Gunmetal Steel)
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(24, 24, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.arc(22, 22, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Glowing Amber Warning Ring
+    ctx.fillStyle = '#b45309';
+    ctx.beginPath();
+    ctx.arc(24, 24, 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(24, 24, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Central Optical Sensor Lens
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.arc(24, 24, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.arc(23, 23, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(22, 22, 2, 2);
+
+    return this.createTextureFromCanvas(canvas);
+  }
+}
