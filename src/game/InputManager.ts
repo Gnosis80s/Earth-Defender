@@ -5,9 +5,17 @@ export class InputManager {
   static virtualBomb = false;
   static virtualCharge = false;
 
+  // Edge-triggered pause request (keyboard Esc/P, gamepad Start). Kept separate
+  // from `keys` so InputManager.reset() can't swallow it.
+  private static pauseRequested = false;
+  private static prevStartPressed = false;
+
   static init() {
     window.addEventListener('keydown', (e) => {
       this.keys[e.code] = true;
+      if (!e.repeat && (e.code === 'Escape' || e.code === 'KeyP')) {
+        this.pauseRequested = true;
+      }
     });
     window.addEventListener('keyup', (e) => {
       this.keys[e.code] = false;
@@ -20,6 +28,18 @@ export class InputManager {
     this.virtualFire = false;
     this.virtualBomb = false;
     this.virtualCharge = false;
+  }
+
+  /** Returns true once per pause press (keyboard or gamepad Start). Poll once per frame. */
+  static consumePauseToggle(): boolean {
+    const gp = this.getGamepad();
+    const start = !!(gp && gp.buttons[9] && gp.buttons[9].pressed);
+    if (start && !this.prevStartPressed) this.pauseRequested = true;
+    this.prevStartPressed = start;
+
+    const requested = this.pauseRequested;
+    this.pauseRequested = false;
+    return requested;
   }
 
   static getGamepad(): Gamepad | null {

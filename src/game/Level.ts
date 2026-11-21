@@ -2,9 +2,15 @@ import * as THREE from 'three';
 import { AssetManager } from './AssetManager';
 import { Enemy } from './entities/Enemy';
 import { Boss } from './entities/Boss';
+import { AsteroidFortress } from './entities/AsteroidFortress';
+import { SolarDock } from './entities/SolarDock';
+import { VoidLeviathan } from './entities/VoidLeviathan';
+import { MotherBrain } from './entities/MotherBrain';
+import { MoonBody, MoonView } from './art/MoonShader';
 import { ParticleManager } from './ParticleManager';
 import { BlastDoor } from './entities/BlastDoor';
 import { Launchpad } from './entities/Launchpad';
+import { STAGE_WAVES, STAGE_SHIP_CAP, SpawnSpec, expandFormation } from './Waves';
 
 export class Level {
   scene: THREE.Scene;
@@ -14,9 +20,32 @@ export class Level {
   bgCity1!: THREE.Mesh;
   bgCity2!: THREE.Mesh;
   bgMoon!: THREE.Mesh;
+  /** The one Moon, seen from closer each stage (see MoonShader.ts). */
+  moon = new MoonBody();
+  // Stage 1 night-city extras (see art/Stage1Art.ts)
+  bgSky!: THREE.Mesh;
+  bgClouds1!: THREE.Mesh;
+  bgClouds2!: THREE.Mesh;
+  bgCityFar1!: THREE.Mesh;
+  bgCityFar2!: THREE.Mesh;
+  moonHalo!: THREE.Mesh;
+  searchlights: THREE.Mesh[] = [];
+  private cloudDrift = 0;
+  private beamTime = 0;
   bgEarth!: THREE.Mesh;
   bgLunar1!: THREE.Mesh;
   bgLunar2!: THREE.Mesh;
+  bgLunarFar1!: THREE.Mesh;
+  // Stage 2 (asteroid belt): nebula sky, far dust band, mid rocks. Textures are assigned on first use.
+  private beltLayers: { meshes: THREE.Mesh[]; tex: string; parallax: number }[] = [];
+  // Stage 3 (lunar orbit): sun glare, receding Earth, distant wreckage. The Moon is `moon`.
+  private orbitGlare!: THREE.Mesh;
+  private orbitEarth!: THREE.Mesh;
+  private orbitWreck: THREE.Mesh[] = [];
+  private mineWarning = false;
+  minefieldActive = false;
+  private mineSpawnTimer = 0;
+  bgLunarFar2!: THREE.Mesh;
   bgCavernFar1!: THREE.Mesh;
   bgCavernFar2!: THREE.Mesh;
   bgCavern1!: THREE.Mesh;
@@ -63,7 +92,13 @@ export class Level {
 
   launchpad: Launchpad | null = null;
 
-  onAsteroidWarningUpdate: (active: boolean) => void = () => {};
+  // Wave director state (see Waves.ts)
+  private waveIndex = 0;
+  private waveTimer = 0;
+  private pendingSpawns: { delay: number; spec: SpawnSpec }[] = [];
+
+  /** 'field' = asteroid field ahead; 'storm' = the stage 2 boss's meteor storm. */
+  onAsteroidWarningUpdate: (active: boolean, kind?: 'field' | 'storm' | 'mines') => void = () => {};
   onMissileWarningUpdate: (active: boolean) => void = () => {};
 
   constructor(scene: THREE.Scene, camera: THREE.OrthographicCamera) {
@@ -107,40 +142,178 @@ export class Level {
     this.scene.add(this.starsPoints);
   }
 
+  /**
+   * Stage 1 night-city layers, back to front: camera-anchored sky gradient,
+   * moon halo, drifting clouds, far skyline, sweeping searchlights. (The
+   * mountains and near skyline reuse the bgMountains/bgCity meshes.)
+   */
+  private initNightCity(tileGeo: THREE.PlaneGeometry) {
+    const tex = (name: string) => AssetManager.getTexture(name);
+
+    this.bgSky = new THREE.Mesh(
+      new THREE.PlaneGeometry(800, 600),
+      new THREE.MeshBasicMaterial({ map: tex('night_sky'), depthWrite: false })
+    );
+    this.bgSky.position.set(0, 0, -30);
+    this.bgSky.renderOrder = -2;
+    this.scene.add(this.bgSky);
+
+    this.moonHalo = new THREE.Mesh(
+      new THREE.PlaneGeometry(220, 220),
+      new THREE.MeshBasicMaterial({ map: tex('moon_halo'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
+    );
+    this.moonHalo.position.set(300, 200, -16);
+    this.moonHalo.renderOrder = 1;
+    this.scene.add(this.moonHalo);
+
+    const cloudGeo = new THREE.PlaneGeometry(800, 200);
+    const cloudMat = new THREE.MeshBasicMaterial({ map: tex('night_clouds'), transparent: true, depthWrite: false });
+    this.bgClouds1 = new THREE.Mesh(cloudGeo, cloudMat);
+    this.bgClouds2 = new THREE.Mesh(cloudGeo, cloudMat);
+    for (const m of [this.bgClouds1, this.bgClouds2]) {
+      m.position.set(0, 130, -13);
+      m.renderOrder = 1;
+      this.scene.add(m);
+    }
+
+    const farMat = new THREE.MeshBasicMaterial({ map: tex('bg_city_far'), transparent: true, depthWrite: false });
+    this.bgCityFar1 = new THREE.Mesh(tileGeo, farMat);
+    this.bgCityFar2 = new THREE.Mesh(tileGeo, farMat);
+    for (const m of [this.bgCityFar1, this.bgCityFar2]) {
+      m.position.set(0, -100, -8);
+      m.renderOrder = 3;
+      this.scene.add(m);
+    }
+
+    // Beam geometry pivots at its base so rotation sweeps it like a real searchlight.
+    const beamGeo = new THREE.PlaneGeometry(110, 380);
+    beamGeo.translate(0, 190, 0);
+    const beamMat = new THREE.MeshBasicMaterial({
+      map: tex('searchlight_beam'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55,
+    });
+    for (let k = 0; k < 3; k++) {
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.set(0, -215, -6);
+      beam.renderOrder = 3;
+      this.scene.add(beam);
+      this.searchlights.push(beam);
+    }
+  }
+
+  /**
+   * Stage 2 layers, back to front: nebula (0.02x, behind the stars), distant
+   * dust band (0.12x), scattered mid-distance rocks (0.35x). Materials start
+   * without a map so these textures aren't generated until Stage 2 needs them.
+   */
+  private initAsteroidBelt() {
+    const make = (tex: string, w: number, h: number, y: number, z: number, order: number, parallax: number) => {
+      const geo = new THREE.PlaneGeometry(w, h);
+      const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false });
+      const meshes = [0, 1].map(() => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(0, y, z);
+        m.renderOrder = order;
+        m.visible = false;
+        this.scene.add(m);
+        return m;
+      });
+      this.beltLayers.push({ meshes, tex, parallax });
+    };
+    make('space_nebula', 800, 600, 0, -30, -2, 0.02);
+    make('belt_far', 800, 260, -150, -12, 1, 0.12);
+    make('belt_mid', 800, 600, 0, -7, 3, 0.35);
+  }
+
+  /** Stage 3 layers. Materials get their textures on first use, like the belt. */
+  private initLunarOrbit() {
+    const mk = (w: number, h: number, order: number, additive = false) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+        transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      }));
+      m.renderOrder = order;
+      m.visible = false;
+      this.scene.add(m);
+      return m;
+    };
+    this.orbitGlare = mk(320, 320, 1, true);
+    this.orbitGlare.position.z = -16;
+    this.orbitEarth = mk(64, 64, 1);
+    this.orbitEarth.position.z = -17;
+    const wreckGeo = new THREE.PlaneGeometry(800, 300);
+    const wreckMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.75 });
+    for (let k = 0; k < 2; k++) {
+      const m = new THREE.Mesh(wreckGeo, wreckMat);
+      m.renderOrder = 2; // in orbit between us and the Moon
+      m.position.set(0, 120, -11);
+      m.visible = false;
+      this.scene.add(m);
+      this.orbitWreck.push(m);
+    }
+  }
+
+  private setLunarOrbitVisible(on: boolean) {
+    const assign = (m: THREE.Mesh, tex: string) => {
+      const mat = m.material as THREE.MeshBasicMaterial;
+      if (on && !mat.map) { mat.map = AssetManager.getTexture(tex); mat.needsUpdate = true; }
+      m.visible = on;
+    };
+    assign(this.orbitGlare, 'sun_glare');
+    assign(this.orbitEarth, 'earth_far');
+    for (const m of this.orbitWreck) assign(m, 'orbital_wreck');
+  }
+
+  private setAsteroidBeltVisible(on: boolean) {
+    for (const layer of this.beltLayers) {
+      const mat = layer.meshes[0].material as THREE.MeshBasicMaterial;
+      if (on && !mat.map) {
+        mat.map = AssetManager.getTexture(layer.tex);
+        mat.needsUpdate = true;
+      }
+      for (const m of layer.meshes) m.visible = on;
+    }
+  }
+
+  private setNightCityVisible(on: boolean) {
+    for (const m of [this.bgSky, this.moonHalo, this.bgClouds1, this.bgClouds2, this.bgCityFar1, this.bgCityFar2, ...this.searchlights]) {
+      m.visible = on;
+    }
+  }
+
   initBackgrounds() {
     const geo = new THREE.PlaneGeometry(800, 400);
     this.matMtn = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_mountains'), transparent: true, depthWrite: false });
     this.bgMountains1 = new THREE.Mesh(geo, this.matMtn);
-    this.bgMountains1.position.set(0, -140, -10);
-    this.bgMountains1.renderOrder = 1;
+    this.bgMountains1.position.set(0, -100, -10);
+    this.bgMountains1.renderOrder = 2;
     this.bgMountains2 = new THREE.Mesh(geo, this.matMtn);
-    this.bgMountains2.position.set(800, -140, -10);
-    this.bgMountains2.renderOrder = 1;
+    this.bgMountains2.position.set(800, -100, -10);
+    this.bgMountains2.renderOrder = 2;
     
     this.scene.add(this.bgMountains1);
     this.scene.add(this.bgMountains2);
 
     this.matCity = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_city'), transparent: true, depthWrite: false });
     this.bgCity1 = new THREE.Mesh(geo, this.matCity);
-    this.bgCity1.position.set(0, -130, -5);
-    this.bgCity1.renderOrder = 2;
+    this.bgCity1.position.set(0, -100, -5);
+    this.bgCity1.renderOrder = 4;
     this.bgCity2 = new THREE.Mesh(geo, this.matCity);
-    this.bgCity2.position.set(800, -130, -5);
-    this.bgCity2.renderOrder = 2;
+    this.bgCity2.position.set(800, -100, -5);
+    this.bgCity2.renderOrder = 4;
 
     this.scene.add(this.bgCity1);
     this.scene.add(this.bgCity2);
 
-    const moonGeo = new THREE.PlaneGeometry(128, 128);
-    const moonMat = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('moon'), transparent: true, depthWrite: false });
-    this.bgMoon = new THREE.Mesh(moonGeo, moonMat);
-    // Position moon statically in the background. We'll update it based on camX so it parallax scrolls slowly.
-    // It sits in front of the star field (z: -15 to -5 range).
+    this.initNightCity(geo);
+    this.initAsteroidBelt();
+    this.initLunarOrbit();
+
+    this.bgMoon = this.moon.mesh;
+    // In front of the star field; positioned per stage in update().
     this.bgMoon.position.set(300, 100, -15);
     this.bgMoon.renderOrder = 1;
     this.scene.add(this.bgMoon);
 
-    const earthGeo = new THREE.PlaneGeometry(160, 160);
+    const earthGeo = new THREE.PlaneGeometry(192, 192); // 1 texel per world unit
     const earthMat = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('earth'), transparent: true, depthWrite: false });
     this.bgEarth = new THREE.Mesh(earthGeo, earthMat);
     this.bgEarth.position.set(300, 125, -14);
@@ -148,13 +321,26 @@ export class Level {
     this.bgEarth.visible = false;
     this.scene.add(this.bgEarth);
 
+    // Stage 4 lunar terrain: distant highlands (slow parallax) behind the
+    // foothills + cratered plain (faster). Both have transparent skies so the
+    // starfield and Earth show through.
+    const matLunarFar = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_lunar_far'), transparent: true, depthWrite: false });
+    this.bgLunarFar1 = new THREE.Mesh(geo, matLunarFar);
+    this.bgLunarFar1.position.set(0, -130, -7);
+    this.bgLunarFar1.renderOrder = 2;
+    this.bgLunarFar2 = new THREE.Mesh(geo, matLunarFar);
+    this.bgLunarFar2.position.set(800, -130, -7);
+    this.bgLunarFar2.renderOrder = 2;
+    this.scene.add(this.bgLunarFar1);
+    this.scene.add(this.bgLunarFar2);
+
     this.matLunar = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_lunar'), transparent: true, depthWrite: false });
     this.bgLunar1 = new THREE.Mesh(geo, this.matLunar);
     this.bgLunar1.position.set(0, -130, -5);
-    this.bgLunar1.renderOrder = 2;
+    this.bgLunar1.renderOrder = 3;
     this.bgLunar2 = new THREE.Mesh(geo, this.matLunar);
     this.bgLunar2.position.set(800, -130, -5);
-    this.bgLunar2.renderOrder = 2;
+    this.bgLunar2.renderOrder = 3;
     
     this.scene.add(this.bgLunar1);
     this.scene.add(this.bgLunar2);
@@ -173,8 +359,8 @@ export class Level {
     this.scene.add(this.bgSolarDock2);
 
     const geoCavern = new THREE.PlaneGeometry(800, 600);
-    this.matCavernFar1 = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_cavern_far'), transparent: false, depthWrite: false });
-    this.matCavernFar2 = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_cavern_far'), transparent: false, depthWrite: false });
+    this.matCavernFar1 = new THREE.MeshBasicMaterial({ map: null, transparent: false, depthWrite: false });
+    this.matCavernFar2 = new THREE.MeshBasicMaterial({ map: null, transparent: false, depthWrite: false });
     this.bgCavernFar1 = new THREE.Mesh(geoCavern, this.matCavernFar1);
     this.bgCavernFar1.position.set(0, 0, -8);
     this.bgCavernFar1.renderOrder = 2;
@@ -185,8 +371,8 @@ export class Level {
     this.scene.add(this.bgCavernFar1);
     this.scene.add(this.bgCavernFar2);
 
-    this.matCavern1 = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_cavern'), transparent: true, depthWrite: false });
-    this.matCavern2 = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_cavern'), transparent: true, depthWrite: false });
+    this.matCavern1 = new THREE.MeshBasicMaterial({ map: null, transparent: true, depthWrite: false });
+    this.matCavern2 = new THREE.MeshBasicMaterial({ map: null, transparent: true, depthWrite: false });
     this.bgCavern1 = new THREE.Mesh(geoCavern, this.matCavern1);
     this.bgCavern1.position.set(0, 0, -4);
     this.bgCavern1.renderOrder = 4;
@@ -208,9 +394,15 @@ export class Level {
     this.asteroidWarning = false;
     this.asteroidFieldActive = false;
     this.asteroidSpawnTimer = 0;
+    this.mineWarning = false;
+    this.minefieldActive = false;
+    this.mineSpawnTimer = 0;
     this.lunarTurretSectionActive = false;
     this.turretSpawnTimer = 0;
     this.enemySpawnDelay = 2.0;
+    this.waveIndex = 0;
+    this.waveTimer = 0;
+    this.pendingSpawns = [];
     this.subbossSpawned = false;
     this.blastDoorActive = false;
     this.blastDoorCleared = false;
@@ -256,6 +448,8 @@ export class Level {
       this.bgCity2.visible = true;
       this.bgLunar1.visible = false;
       this.bgLunar2.visible = false;
+      this.bgLunarFar1.visible = false;
+      this.bgLunarFar2.visible = false;
       this.bgEarth.visible = false;
       this.bgSolarDock1.visible = false;
       this.bgSolarDock2.visible = false;
@@ -264,19 +458,32 @@ export class Level {
       this.bgCavern1.visible = false;
       this.bgCavern2.visible = false;
       this.bgMoon.visible = true;
-      this.bgMoon.scale.set(0.5, 0.5, 1);
-      this.bgMoon.position.y = 220;
+      this.bgMoon.position.y = 200;
+      this.moon.setView(Level.MOON_VIEWS[1]);
+      this.moon.setRotation(0);
+      this.setNightCityVisible(true);
+      this.setAsteroidBeltVisible(false);
+      this.setLunarOrbitVisible(false);
 
       // Create UK Military Base Launchpad at Stage 1 start
       this.launchpad = new Launchpad(this.scene, 0, 0);
     } else {
       // Level 2 and onwards: Remove city/mountain background and replace completely with deep space starfield!
+      this.setNightCityVisible(false);
+      if (stage === 2) AssetManager.ensure(AssetManager.STAGE2_TEXTURES);
+      if (stage === 3) AssetManager.ensure(AssetManager.STAGE3_TEXTURES);
+      if (stage === 4) AssetManager.ensure(AssetManager.STAGE4_TEXTURES);
+      if (stage === 5) AssetManager.ensure(AssetManager.STAGE5_TEXTURES);
+      this.setAsteroidBeltVisible(stage === 2);
+      this.setLunarOrbitVisible(stage === 3);
       this.bgMountains1.visible = false;
       this.bgMountains2.visible = false;
       this.bgCity1.visible = false;
       this.bgCity2.visible = false;
       this.bgLunar1.visible = (stage === 4);
       this.bgLunar2.visible = (stage === 4);
+      this.bgLunarFar1.visible = (stage === 4);
+      this.bgLunarFar2.visible = (stage === 4);
       this.bgEarth.visible = (stage === 4);
       this.bgSolarDock1.visible = false;
       this.bgSolarDock2.visible = false;
@@ -286,12 +493,9 @@ export class Level {
       this.bgCavern2.visible = (stage === 5);
       this.bgMoon.visible = (stage === 1 || stage === 2 || stage === 3);
       
-      if (stage === 2) {
-        this.bgMoon.scale.set(1.4, 1.4, 1);
-        this.bgMoon.position.y = 180;
-      } else if (stage === 3) {
-        this.bgMoon.scale.set(3.2, 3.2, 1); // Looming massive pixel art moon in high lunar orbit
-        this.bgMoon.position.y = 80;
+      if (stage === 2 || stage === 3) {
+        this.moon.setView(Level.MOON_VIEWS[stage]);
+        this.moon.setRotation(0);
       }
 
       if (stage === 5) {
@@ -319,7 +523,7 @@ export class Level {
       if (stage === 1) {
         this.starPositions[i * 3 + 1] = 40 + Math.random() * 240;
       } else if (stage === 4) {
-        this.starPositions[i * 3 + 1] = -10 + Math.random() * 280;
+        this.starPositions[i * 3 + 1] = -90 + Math.random() * 370;
       } else {
         this.starPositions[i * 3 + 1] = (Math.random() - 0.5) * 560;
       }
@@ -328,11 +532,49 @@ export class Level {
     this.starsPoints.visible = (stage !== 5);
   }
 
+  /**
+   * The Moon at each stage of the approach. Same body, same face; only the
+   * distance (radius) and the sun change. Stage 4 stands on it, stage 5 is inside.
+   */
+  static readonly MOON_VIEWS: Record<number, MoonView> = {
+    1: { R: 44, planeW: 96, planeH: 96, cx: 0, cy: 0, sun: [0.3, 0.22, 0.93], tint: '#9fb4e8', tintAmt: 0.1, bump: 0.8 },
+    2: { R: 78, planeW: 164, planeH: 164, cx: 0, cy: 0, sun: [0.72, 0.48, 0.42], bump: 0.9 },
+    3: { R: 900, planeW: 820, planeH: 420, cx: 90, cy: -910, sun: [0.86, 0.32, 0.2], alien: 1, bump: 1.1 },
+  };
+  /** Stage 3 Moon plane centre (y); the sphere centre sits 910 lower, so the limb peaks near y = -100. */
+  static readonly MOON3_Y = -90;
+  private moonTime = 0;
+  private heartT = 0;
+
   isCameraScrolling(player?: any): boolean {
     if (player && (player.isStage4Entry || player.isStage1Takeoff)) {
       return false;
     }
     return !this.bossActive && !(this.blastDoorActive && !this.blastDoorCleared);
+  }
+
+  /**
+   * Scrolls the starfield's per-star offsets. Purely cosmetic, so it runs at
+   * render rate (outside the fixed simulation step) to stay smooth on
+   * high-refresh displays; vertex buffers can't be interpolated generically.
+   */
+  updateStarfield(dt: number) {
+    if (!this.starsPoints.visible || dt <= 0) return;
+    const posAttr = this.starsPoints.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < 300; i++) {
+      this.starPositions[i * 3] -= (40 + (i % 5) * 25) * dt;
+      if (this.starPositions[i * 3] < -450) {
+        this.starPositions[i * 3] += 900;
+        if (this.currentStage === 1) {
+          this.starPositions[i * 3 + 1] = 40 + Math.random() * 240;
+        } else if (this.currentStage === 4) {
+          this.starPositions[i * 3 + 1] = -90 + Math.random() * 370;
+        } else {
+          this.starPositions[i * 3 + 1] = (Math.random() - 0.5) * 560;
+        }
+      }
+    }
+    posAttr.needsUpdate = true;
   }
 
   update(dt: number, particles?: ParticleManager, player?: any) {
@@ -352,29 +594,38 @@ export class Level {
     // Parallax scrolling
     const camX = this.camera.position.x;
     
-    // Starfield animation anchored to camera
+    // Starfield anchored to camera (per-star scrolling happens in updateStarfield)
     this.starsPoints.visible = (this.currentStage !== 5);
-    if (this.starsPoints.visible) {
-      this.starsPoints.position.x = camX;
-      const posAttr = this.starsPoints.geometry.attributes.position as THREE.BufferAttribute;
-      for (let i = 0; i < 300; i++) {
-        this.starPositions[i * 3] -= (40 + (i % 5) * 25) * dt;
-        if (this.starPositions[i * 3] < -450) {
-          this.starPositions[i * 3] += 900;
-          if (this.currentStage === 1) {
-            this.starPositions[i * 3 + 1] = 40 + Math.random() * 240;
-          } else if (this.currentStage === 4) {
-            this.starPositions[i * 3 + 1] = -10 + Math.random() * 280;
-          } else {
-            this.starPositions[i * 3 + 1] = (Math.random() - 0.5) * 560;
-          }
-        }
+    this.starsPoints.position.x = camX;
+
+    // Stage 1 night-city layers
+    if (this.currentStage === 1) {
+      this.bgSky.position.x = camX;
+
+      this.cloudDrift += dt * 6; // clouds drift on their own as well as parallaxing
+      const cloudX = camX * 0.06 + this.cloudDrift;
+      this.bgClouds1.position.x = camX - (cloudX % 800);
+      this.bgClouds2.position.x = this.bgClouds1.position.x + 800;
+
+      const farX = camX * 0.25;
+      this.bgCityFar1.position.x = camX - (farX % 800);
+      this.bgCityFar2.position.x = this.bgCityFar1.position.x + 800;
+
+      // Searchlights are planted in the far skyline and sweep slowly.
+      this.beamTime += dt;
+      const tileLeft = this.bgCityFar1.position.x - 400;
+      const anchors = [150, 430, 690];
+      for (let k = 0; k < this.searchlights.length; k++) {
+        let bx = tileLeft + anchors[k];
+        if (bx < camX - 460) bx += 800;
+        const beam = this.searchlights[k];
+        beam.position.x = bx;
+        beam.rotation.z = Math.sin(this.beamTime * (0.35 + k * 0.08) + k * 2.1) * 0.55;
       }
-      posAttr.needsUpdate = true;
     }
 
-    // Background layer 1
-    const mtnX = camX * 0.2;
+    // Background layer 1 (mountains)
+    const mtnX = camX * 0.1;
     this.bgMountains1.position.x = camX - (mtnX % 800);
     this.bgMountains2.position.x = this.bgMountains1.position.x + 800;
 
@@ -395,12 +646,29 @@ export class Level {
     const lunarX = camX * 0.6;
     this.bgLunar1.position.x = camX - (lunarX % 800);
     this.bgLunar2.position.x = this.bgLunar1.position.x + 800;
+    const lunarFarX = camX * 0.3;
+    this.bgLunarFar1.position.x = camX - (lunarFarX % 800);
+    this.bgLunarFar2.position.x = this.bgLunarFar1.position.x + 800;
 
     // Solar Dock layer
     if (this.bgSolarDock1.visible) {
       const dockX = camX * 0.35;
       this.bgSolarDock1.position.x = camX - (dockX % 800);
       this.bgSolarDock2.position.x = this.bgSolarDock1.position.x + 800;
+    }
+
+    // Stage 5: the factory breathes. A lub-dub heartbeat darkens and
+    // brightens the walls; it races as the Mother Brain nears death.
+    if (this.currentStage === 5) {
+      const dread = this.boss && (this.boss as any).dread !== undefined ? (this.boss as any).dread : 0;
+      this.heartT += dt * (1 / (1.15 - 0.55 * dread));
+      const ph = this.heartT % 1;
+      const beat = Math.exp(-(((ph - 0.04) / 0.05) ** 2)) + 0.65 * Math.exp(-(((ph - 0.26) / 0.05) ** 2));
+      const near = 0.8 + 0.2 * beat, far = 0.86 + 0.14 * beat;
+      this.matCavern1.color.setRGB(near, near * (0.97 - dread * 0.08), near * (0.97 - dread * 0.08));
+      this.matCavern2.color.copy(this.matCavern1.color);
+      this.matCavernFar1.color.setRGB(far, far, far);
+      this.matCavernFar2.color.setRGB(far, far, far);
     }
 
     // Stage 5 Cavern / Factory Layer (Multi-Layer Parallax)
@@ -477,14 +745,32 @@ export class Level {
       this.bgEarth.position.x = camX + 240 - (camX * 0.025);
       this.bgEarth.position.y = 125;
     } else if (this.currentStage === 3) {
-      this.bgMoon.position.x = camX + 180 - (camX * 0.04); // Massive looming moon in high orbit
-      this.bgMoon.position.y = 80;
+      // In orbit: the Moon's limb fills the bottom of the screen and its
+      // surface rolls past (rotation about the view axis) as we fly.
+      this.bgMoon.position.x = camX;
+      this.bgMoon.position.y = Level.MOON3_Y;
+      this.moon.setRotation((camX * 0.22) / Level.MOON_VIEWS[3].R);
+      this.moonTime += dt;
+      this.moon.setTime(this.moonTime);
+      // The sun's glare hangs in the top-right corner; Earth recedes behind us at top-left.
+      this.orbitGlare.position.set(camX + 400, 300, -16);
+      this.orbitEarth.position.set(camX - 290 - camX * 0.004, 215, -17);
+      const off = (camX * 0.15) % 800;
+      this.orbitWreck[0].position.x = camX - off;
+      this.orbitWreck[1].position.x = camX - off + 800;
     } else if (this.currentStage === 2) {
-      this.bgMoon.position.x = camX + 260 - (camX * 0.03); // Deep space view
-      this.bgMoon.position.y = 180;
+      this.bgMoon.position.x = camX + 250 - (camX * 0.03); // Closer now: twice the size it was over the city
+      this.bgMoon.position.y = 165;
+      for (const layer of this.beltLayers) {
+        const off = (camX * layer.parallax) % 800;
+        layer.meshes[0].position.x = camX - off;
+        layer.meshes[1].position.x = camX - off + 800;
+      }
     } else if (this.currentStage === 1) {
-      this.bgMoon.position.x = camX + 300 - (camX * 0.01); // Small distant moon
-      this.bgMoon.position.y = 210;
+      this.bgMoon.position.x = camX + 290 - (camX * 0.01);
+      this.bgMoon.position.y = 200;
+      this.moonHalo.position.x = this.bgMoon.position.x;
+      this.moonHalo.position.y = this.bgMoon.position.y;
     }
 
     // Level 2 Asteroid Field State Management
@@ -505,6 +791,17 @@ export class Level {
           this.asteroidFieldActive = false;
         }
       }
+    }
+
+    // Level 3 minefield: warning, then proximity mines drift in among the waves.
+    if (this.currentStage === 3 && !this.bossActive && !this.bossDefeated) {
+      const d = this.distance;
+      const warn = d >= 3300 && d < 3800;
+      if (warn !== this.mineWarning) {
+        this.mineWarning = warn;
+        this.onAsteroidWarningUpdate(warn, 'mines');
+      }
+      this.minefieldActive = d >= 3800 && d < 6200;
     }
 
     // Level 4 Lunar Surface Turret State Management & Missile Defence Warning
@@ -576,6 +873,9 @@ export class Level {
       }
     }
 
+    // Ships from already-launched formations keep arriving on their own timers.
+    this.updatePendingSpawns(dt, camX);
+
     // Spawning logic
     if (!this.isCameraScrolling(player)) {
       // Pause enemy spawn delay countdown and spawning during takeoff/cutscenes
@@ -591,25 +891,32 @@ export class Level {
 
         if (this.asteroidFieldActive) {
           // Asteroid field active: NO regular enemies spawn, only asteroids!
-          this.asteroidSpawnTimer += dt;
-          if (this.asteroidSpawnTimer > 0.15) {
-            this.asteroidSpawnTimer = 0;
+          // Irregular cadence; large rocks split into fragments when destroyed (Game.onEnemyKilled).
+          this.asteroidSpawnTimer -= dt;
+          if (this.asteroidSpawnTimer <= 0) {
+            this.asteroidSpawnTimer = 0.2 + Math.random() * 0.14;
 
             const hasGoldenAsteroid = this.enemies.some(e => e.active && e.type === 'asteroid_gold');
-            let type = 'asteroid_small';
-
-            // Always ensure a golden asteroid randomly spawns during the asteroid field
-            if (!hasGoldenAsteroid && Math.random() < 0.25) {
+            let type: string;
+            if (!hasGoldenAsteroid && Math.random() < 0.12) {
               type = 'asteroid_gold';
             } else {
-              const isLarge = Math.random() < 0.45;
-              type = isLarge ? 'asteroid_large' : 'asteroid_small';
+              type = Math.random() < 0.38 ? 'asteroid_large' : 'asteroid_small';
             }
 
             const y = (Math.random() - 0.5) * 520;
             const asteroid = new Enemy(this.scene, type, camX + 500, y, 'straight');
             this.enemies.push(asteroid);
           }
+        } else if (this.minefieldActive) {
+          this.mineSpawnTimer -= dt;
+          if (this.mineSpawnTimer <= 0) {
+            this.mineSpawnTimer = 0.7 + Math.random() * 0.45;
+            const y = (Math.random() - 0.5) * 480;
+            this.enemies.push(new Enemy(this.scene, 'solar_mine', camX + 480, y, 'straight'));
+          }
+          // Ships keep coming at half strength: mines shape where you can fly.
+          this.runWaveDirector(dt, 0.5, 1.7);
         } else if (this.lunarTurretSectionActive) {
           // Lunar Turret Section
           this.turretSpawnTimer += dt;
@@ -622,39 +929,13 @@ export class Level {
             this.enemies.push(turret);
           }
           
-          // Also spawn occasional regular enemies, but fewer
-          let activeShips = this.enemies.filter(e => !e.type.startsWith('asteroid') && e.type !== 'turret').length;
-          let maxShips = 3;
-          let spawnRate = 0.008;
-
-          if (this.hardcoreMode) {
-            maxShips += 2;
-            spawnRate *= 2;
-          }
-
-          if (activeShips < maxShips && Math.random() < spawnRate) {
-            this.spawnWave(camX);
-          }
+          // Air waves continue at half density while the turrets carry the section.
+          this.runWaveDirector(dt, 0.5, 1.6);
         } else {
-          // Regular enemy spawning (tuned for balanced difficulty)
+          // Formations hold off while a sub-boss has the stage.
           const subbossActive = this.enemies.some(e => e.active && e.type === 'subboss1');
-          
-          let activeShips = this.enemies.filter(e => !e.type.startsWith('asteroid')).length;
-          let maxShips = this.currentStage === 2 ? 4 : (this.currentStage === 3 ? 5 : (this.currentStage === 5 ? 8 : 7));
-          let spawnRate = this.currentStage === 2 ? 0.012 : (this.currentStage === 3 ? 0.018 : (this.currentStage === 5 ? 0.025 : 0.02));
-
-          if (subbossActive) {
-            maxShips = 1;
-            spawnRate = 0.002;
-          }
-
-          if (this.hardcoreMode) {
-            maxShips += 5;
-            spawnRate *= 2;
-          }
-
-          if (activeShips < maxShips && Math.random() < spawnRate) {
-            this.spawnWave(camX);
+          if (!subbossActive) {
+            this.runWaveDirector(dt, 1, 1);
           }
         }
       } else if (!this.bossActive && !this.bossDefeated && this.distance >= this.bossDistance) {
@@ -667,6 +948,8 @@ export class Level {
           this.onMissileWarningUpdate(false);
         }
         this.asteroidFieldActive = false;
+        this.minefieldActive = false;
+        if (this.mineWarning) { this.mineWarning = false; this.onAsteroidWarningUpdate(false, 'mines'); }
         this.lunarTurretSectionActive = false;
         this.spawnBoss(camX);
         this.bossActive = true;
@@ -674,85 +957,60 @@ export class Level {
     }
   }
 
-  spawnWave(camX: number) {
-    const y = this.currentStage === 5 ? (Math.random() - 0.5) * 260 : (Math.random() - 0.5) * 520;
+  /**
+   * Launch the next scripted formation when its gap has elapsed and there's
+   * room under the ship cap. `capScale`/`gapScale` thin the waves out during
+   * sections where something else (e.g. ground turrets) provides the threat.
+   */
+  private runWaveDirector(dt: number, capScale: number, gapScale: number) {
+    this.waveTimer -= dt;
+    if (this.waveTimer > 0) return;
 
-    let type = 'scout';
-    let pattern = 'straight';
+    const script = STAGE_WAVES[this.currentStage];
+    if (!script || script.length === 0) return;
 
-    if (this.currentStage === 1) {
-      const heavyChance = 0.2;
-      type = Math.random() < heavyChance ? 'heavy' : 'scout';
-      pattern = type === 'heavy' ? 'heavy' : (Math.random() > 0.5 ? 'wave' : 'straight');
-    } else if (this.currentStage === 2) {
-      // Level 2 includes new Interceptors and Snipers!
-      const rand = Math.random();
-      if (rand < 0.35) {
-        type = 'interceptor';
-        pattern = 'swoop';
-      } else if (rand < 0.65) {
-        type = 'sniper';
-        pattern = 'zigzag';
-      } else if (rand < 0.85) {
-        type = 'heavy';
-        pattern = 'heavy';
-      } else {
-        type = 'scout';
-        pattern = 'wave';
-      }
-    } else if (this.currentStage === 3) {
-      // Level 3 Lunar Approach: High-orbit interceptors, snipers, & heavy alien destroyers
-      const rand = Math.random();
-      if (rand < 0.35) {
-        type = 'interceptor';
-        pattern = 'swoop';
-      } else if (rand < 0.65) {
-        type = 'sniper';
-        pattern = 'zigzag';
-      } else if (rand < 0.85) {
-        type = 'heavy';
-        pattern = 'heavy';
-      } else {
-        type = 'scout';
-        pattern = 'wave';
-      }
-    } else if (this.currentStage === 4) {
-      // Level 4 Lunar Surface: Heavy lunar surface interceptors & snipers
-      const rand = Math.random();
-      if (rand < 0.3) {
-        type = 'interceptor';
-        pattern = 'swoop';
-      } else if (rand < 0.6) {
-        type = 'sniper';
-        pattern = 'zigzag';
-      } else if (rand < 0.85) {
-        type = 'heavy';
-        pattern = 'heavy';
-      } else {
-        type = 'scout';
-        pattern = Math.random() > 0.5 ? 'wave' : 'straight';
-      }
-    } else {
-      // Stage 5: Moon Core Biomechanical Menace (Organic Alien Fleet)
-      const rand = Math.random();
-      if (rand < 0.4) {
-        type = 'bioDrone';
-        pattern = 'bio_spiral';
-      } else if (rand < 0.75) {
-        type = 'bioStalker';
-        pattern = 'bio_hunt';
-      } else {
-        type = 'bioBehemoth';
-        pattern = 'bio_heavy';
+    const cap = Math.round((STAGE_SHIP_CAP[this.currentStage] ?? 8) * capScale) + (this.hardcoreMode ? 4 : 0);
+    let alive = this.pendingSpawns.length;
+    for (const e of this.enemies) {
+      if (e.active && !e.type.startsWith('asteroid') && e.type !== 'turret' && e.type !== 'solar_mine' && !e.type.startsWith('subboss')) alive++;
+    }
+    if (alive >= cap) return; // wait for the player to thin the field
+
+    const entry = script[this.waveIndex % script.length];
+    this.waveIndex++;
+    for (const spec of expandFormation(entry)) {
+      this.pendingSpawns.push({ delay: spec.delay, spec });
+    }
+    this.waveTimer = entry.gap * (this.hardcoreMode ? 0.65 : 1) * gapScale;
+  }
+
+  private updatePendingSpawns(dt: number, camX: number) {
+    for (let i = this.pendingSpawns.length - 1; i >= 0; i--) {
+      const p = this.pendingSpawns[i];
+      p.delay -= dt;
+      if (p.delay <= 0) {
+        this.spawnFromSpec(p.spec, camX);
+        this.pendingSpawns.splice(i, 1);
       }
     }
-    
-    const enemy = new Enemy(this.scene, type, camX + 450, y, pattern);
-    this.enemies.push(enemy);
+  }
+
+  private spawnFromSpec(spec: SpawnSpec, camX: number) {
+    // Spawn just past the right edge (screen x = +400), or at an explicit
+    // screen x for edge-entry formations like the pincer.
+    const x = spec.screenX !== undefined ? camX + spec.screenX : camX + 450 + spec.dx;
+    const e = new Enemy(this.scene, spec.type, x, spec.y, spec.pattern);
+    if (spec.targetY !== undefined) e.targetY = spec.targetY;
+    if (spec.dir !== undefined) e.peelDir = spec.dir;
+    this.enemies.push(e);
   }
 
   spawnBoss(camX: number) {
-    this.boss = new Boss(this.scene, camX + 500, 0, this.currentStage);
+    this.boss = this.currentStage === 2 ? new AsteroidFortress(this.scene, camX + 520, 0)
+      : this.currentStage === 3 ? new SolarDock(this.scene, camX + 520, 0)
+      : this.currentStage === 4 ? new VoidLeviathan(this.scene, camX + 300, 0)
+      : this.currentStage === 5 ? new MotherBrain(this.scene, camX + 520, 0)
+      : new Boss(this.scene, camX + 500, 0, this.currentStage);
   }
 }
 

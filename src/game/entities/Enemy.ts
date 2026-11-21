@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { Entity } from './Entity';
+import { Entity, addFlashUniform } from './Entity';
 import { AssetManager } from '../AssetManager';
 import { BulletManager } from '../BulletManager';
 import { ParticleManager } from '../ParticleManager';
 import { SoundManager } from '../SoundManager';
+import { ROCK_FRAMES, RockKind, rockVariantCount } from '../art/Stage2Art';
 
 export class Enemy extends Entity {
   type: string;
@@ -15,13 +16,33 @@ export class Enemy extends Entity {
   rotSpeed: number = 0;
   maxHp: number = 1;
   damageFlashTimer: number = 0;
+  /** 'pincer' pattern: height to converge on after entering from a screen edge. */
+  targetY: number = 0;
+  /** 'peel' pattern: +1 breaks upward, -1 breaks downward. */
+  peelDir: number = 1;
 
   isExploding: boolean = false;
   explodeTimer: number = 0;
   explodeTickTimer: number = 0;
 
   turretLauncherMesh: THREE.Mesh | null = null;
+  private turretFlash: { value: number } | null = null;
   currentTurretAngle: number = Math.PI;
+
+  // Asteroids: tumble frames (lighting stays fixed) and drift velocity.
+  private rockKind: RockKind | null = null;
+  private rockVariant = 0;
+  private spinPhase = 0;
+  private rockFrame = -1;
+  driftVx = 0;
+  driftVy = 0;
+  /** Downward pull for rocks thrown up from the lunar surface (0 = drift in space). */
+  gravity = 0;
+
+  // Proximity mines: arm when the player comes close, then burst.
+  private mineArmed = false;
+  private mineFuse = 0;
+  static readonly MINE_TRIGGER = 88;
   targetTurretAngle: number = Math.PI;
 
   constructor(scene: THREE.Scene, type: string, x: number, y: number, pattern: string) {
@@ -61,14 +82,18 @@ export class Enemy extends Entity {
       texName = 'asteroid_gold';
       size = 56;
       hp = 35;
+    } else if (type === 'asteroid_chunk') {
+      texName = 'asteroid_chunk';
+      size = 28;
+      hp = 5;
     } else if (type === 'turret') {
       texName = 'turret_base';
       size = 52;
       hp = 18;
     } else if (type === 'solar_mine') {
       texName = 'solar_mine';
-      size = 48;
-      hp = 8;
+      size = 36;
+      hp = 3;
     } else if (type === 'bioDrone') {
       texName = 'enemyBioDrone';
       size = 36;
@@ -93,7 +118,24 @@ export class Enemy extends Entity {
     this.maxHp = hp;
     this.radius = size / 2;
     if (type.startsWith('asteroid')) {
-      this.rotSpeed = (Math.random() - 0.5) * 2.5;
+      const kind = type.slice('asteroid_'.length) as RockKind;
+      this.rockKind = kind;
+      this.rockVariant = Math.floor(Math.random() * rockVariantCount(kind));
+      this.spinPhase = Math.random() * Math.PI * 2;
+      // Smaller rocks tumble faster; direction is random.
+      const spin = kind === 'large' ? 1.0 : kind === 'chunk' ? 2.6 : 1.6;
+      this.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * spin * (0.7 + Math.random() * 0.6);
+      // The sprite is an irregular rock, not a disc: a slightly smaller hitbox is fairer.
+      this.radius = size * 0.42;
+      const base = kind === 'large' ? 120 : kind === 'chunk' ? 150 : kind === 'gold' ? 130 : 140;
+      this.driftVx = -(base + Math.random() * 50);
+      this.driftVy = (Math.random() - 0.5) * 30;
+      this.updateRockFrame();
+    }
+    if (type === 'solar_mine') {
+      this.radius = 13;
+      this.driftVx = -(60 + Math.random() * 40);
+      this.driftVy = 0;
     }
 
     if (type === 'turret') {
@@ -104,6 +146,7 @@ export class Enemy extends Entity {
         alphaTest: 0.05,
         depthWrite: false
       });
+      this.turretFlash = addFlashUniform(launcherMat);
       this.turretLauncherMesh = new THREE.Mesh(launcherGeo, launcherMat);
       this.turretLauncherMesh.renderOrder = 11;
       this.turretLauncherMesh.position.set(0, 0, 0.1);
@@ -112,10 +155,26 @@ export class Enemy extends Entity {
     }
   }
 
+  /** Throw/redirect an asteroid (boss volleys, meteor storms, fragments). */
+  launch(vx: number, vy: number) {
+    this.driftVx = vx;
+    this.driftVy = vy;
+  }
+
+  private updateRockFrame() {
+    if (!this.rockKind) return;
+    const tau = Math.PI * 2;
+    const f = Math.floor((((this.spinPhase % tau) + tau) % tau) / tau * ROCK_FRAMES) % ROCK_FRAMES;
+    if (f === this.rockFrame) return;
+    this.rockFrame = f;
+    (this.mesh.material as THREE.MeshBasicMaterial).map =
+      AssetManager.getTexture(`rock_${this.rockKind}_${this.rockVariant}_${f}`);
+  }
+
   takeDamage(amount: number) {
     if (this.isExploding) return;
     this.hp -= amount;
-    this.damageFlashTimer = 0.06;
+    this.damageFlashTimer = 0.08;
     if (this.hp <= 0) {
       if (this.type === 'subboss_gatekeeper' || this.type === 'subboss1') {
         this.hp = 0;
@@ -145,14 +204,16 @@ export class Enemy extends Entity {
       const flashRed = Math.floor(time * 28) % 2 === 0;
       if (mat) mat.color.set(flashRed ? 0xff2222 : 0xffffff);
       if (turretMat) turretMat.color.set(flashRed ? 0xff2222 : 0xffffff);
-    } else if (this.damageFlashTimer > 0) {
-      // Crisp white flash on receiving damage
-      if (mat) mat.color.set(0xffffff);
-      if (turretMat) turretMat.color.set(0xffffff);
     } else {
       if (mat && mat.color.getHex() !== 0xffffff) mat.color.set(0xffffff);
       if (turretMat && turretMat.color.getHex() !== 0xffffff) turretMat.color.set(0xffffff);
     }
+
+    // White hit-flash. Strobes between strong and faint so an enemy under
+    // sustained fire stays readable instead of turning into a white blob.
+    const flash = this.damageFlashTimer > 0 ? (Math.floor(time * 30) % 2 === 0 ? 0.9 : 0.3) : 0;
+    this.setFlash(flash);
+    if (this.turretFlash) this.turretFlash.value = flash;
 
     if (this.isExploding) {
       this.explodeTimer -= dt;
@@ -192,8 +253,7 @@ export class Enemy extends Entity {
           game.addScreenShake(18, 0.45);
         }
         if (game && game.tryDropPowerup) {
-          game.score += this.type === 'subboss_gatekeeper' ? 1000 : 800;
-          if (game.onScoreUpdate) game.onScoreUpdate(game.score);
+          game.addScore(this.type === 'subboss_gatekeeper' ? 1000 : 800);
           game.tryDropPowerup(this.mesh.position.x, this.mesh.position.y - 20, true, ['P', 'M', 'S']);
         }
         this.mesh.visible = false;
@@ -205,16 +265,49 @@ export class Enemy extends Entity {
     this.timer += dt;
 
     if (this.type === 'solar_mine') {
-      this.mesh.rotation.z += 1.8 * dt;
-      this.vx = -70;
-      this.vy = Math.sin(this.timer * 1.5) * 35;
-      if (particles && Math.random() < 0.25) {
-        particles.spawnExplosion(this.mesh.position.x, this.mesh.position.y, 0x00ffff, 2);
+      this.vx = this.driftVx;
+      this.vy = this.driftVy + Math.sin(this.timer * 1.5) * 25;
+      const pos = this.mesh.position;
+      if (!this.mineArmed && playerPos && Math.hypot(playerPos.x - pos.x, playerPos.y - pos.y) < Enemy.MINE_TRIGGER) {
+        this.mineArmed = true;
+        this.mineFuse = 0.6;
+        SoundManager.playBloop(1.8);
+      }
+      if (this.mineArmed) {
+        this.mineFuse -= dt;
+        this.vx *= 0.3; this.vy *= 0.3; // brakes while the fuse burns
+        const blink = Math.floor(this.mineFuse * 14) % 2 === 0;
+        (this.mesh.material as THREE.MeshBasicMaterial).map = AssetManager.getTexture(blink ? 'solar_mine_armed' : 'solar_mine');
+        if (this.mineFuse <= 0) {
+          // Ring burst: 8 slow shots, rotated randomly so it can't be memorised.
+          const a0 = Math.random() * Math.PI;
+          for (let k = 0; k < 8; k++) {
+            const a = a0 + (k / 8) * Math.PI * 2;
+            bullets?.spawn(pos.x, pos.y, Math.cos(a) * 135, Math.sin(a) * 135, false);
+          }
+          particles?.spawnExplosion(pos.x, pos.y, 0xff5a4a, 22);
+          particles?.spawnExplosion(pos.x, pos.y, 0x7ae07a, 10);
+          SoundManager.playExplosion('small', 1.2);
+          this.active = false;
+          this.mesh.visible = false;
+          return;
+        }
       }
     } else if (this.type.startsWith('asteroid')) {
-      this.mesh.rotation.z += this.rotSpeed * dt;
-      this.vx = -160;
-      this.vy = Math.sin(this.timer * 0.8) * 15;
+      this.spinPhase += this.rotSpeed * dt;
+      this.updateRockFrame();
+      if (this.gravity > 0) {
+        this.driftVy -= this.gravity * dt;
+        // Falling rocks shatter on the lunar floor.
+        if (this.driftVy < 0 && this.mesh.position.y < -215) {
+          particles?.spawnExplosion(this.mesh.position.x, this.mesh.position.y, 0x8f96a1, 10);
+          this.active = false;
+          this.mesh.visible = false;
+          return;
+        }
+      }
+      this.vx = this.driftVx;
+      this.vy = this.driftVy + (this.gravity > 0 ? 0 : Math.sin(this.timer * 0.8) * 8);
       if (this.type === 'asteroid_gold' && particles && Math.random() < 0.45) {
         particles.spawnExplosion(
           this.mesh.position.x + (Math.random() - 0.5) * 24,
@@ -229,6 +322,21 @@ export class Enemy extends Entity {
     } else if (this.pattern === 'straight') {
       this.vx = -200;
       this.vy = 0;
+    } else if (this.pattern === 'pincer') {
+      // Drop in from the top/bottom edge, ease onto targetY, then fly across.
+      this.vx = -150;
+      this.vy = (this.targetY - this.mesh.position.y) * 2.2;
+    } else if (this.pattern === 'peel') {
+      // Fly in level, then break away in a widening arc once a third of the
+      // way across the screen.
+      const peelLine = cameraX + 130;
+      if (this.mesh.position.x > peelLine && this.timer < 6) {
+        this.vx = -230;
+        this.vy = 0;
+      } else {
+        this.vx = -230;
+        this.vy = Math.min(this.vy * this.peelDir + 420 * dt, 240) * this.peelDir;
+      }
     } else if (this.pattern === 'heavy') {
       if (this.mesh.position.x > cameraX + 200) {
         this.vx = -100;
@@ -317,7 +425,7 @@ export class Enemy extends Entity {
 
     // Firing
     if (this.fireCooldown > 0) this.fireCooldown -= dt;
-    if (this.fireCooldown <= 0 && bullets && this.mesh.position.x < cameraX + 400 && this.mesh.position.x > cameraX - 400 && !this.type.startsWith('asteroid')) {
+    if (this.fireCooldown <= 0 && bullets && this.mesh.position.x < cameraX + 400 && this.mesh.position.x > cameraX - 400 && !this.type.startsWith('asteroid') && this.type !== 'solar_mine') {
       SoundManager.playEnemyFire(0.9 + Math.random() * 0.2);
       if (this.type === 'bioDrone') {
         bullets.spawn(this.mesh.position.x - 18, this.mesh.position.y, -260, 0, false);
@@ -457,8 +565,8 @@ export class Enemy extends Entity {
       }
     }
 
-    // Offscreen cleanup
-    if (this.mesh.position.x < cameraX - 500) {
+    // Offscreen cleanup (rocks can also leave through the top or bottom)
+    if (this.mesh.position.x < cameraX - 500 || this.mesh.position.y < -420 || this.mesh.position.y > 420) {
       this.active = false;
     }
   }

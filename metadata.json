@@ -1,6 +1,6 @@
 {
-  "name": "Remix Earth Defender C",
-  "description": "High-performance Earth Defender arcade space shooter rebuilt with a C/C++ WebAssembly (WASM) game engine core, 60 FPS physics, and WebGL rendering.",
+  "name": "Earth Defender",
+  "description": "Arcade horizontal space shooter built with React, TypeScript and Three.js.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

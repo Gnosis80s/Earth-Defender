@@ -442,8 +442,12 @@ export class Player extends Entity {
     if (this.mesh.position.y < minY) this.mesh.position.y = minY;
     if (this.mesh.position.y > maxY) this.mesh.position.y = maxY;
 
-    // Hover animation
-    this.mesh.position.y += Math.sin(time * 5) * 0.5;
+    // Hover bob is cosmetic only: Game.render applies `renderOffsetY` while
+    // drawing and removes it afterwards, so the hitbox never drifts. (It used
+    // to be added to position.y every frame, moving the real hitbox ~±6px.)
+    const bob = Math.sin(time * 2.5) * 3;
+    this.mesh.userData.renderOffsetY = bob;
+    if (this.shieldMesh) this.shieldMesh.userData.renderOffsetY = bob;
 
     // Shield positioning
     if (this.shieldMesh) {

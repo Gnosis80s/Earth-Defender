@@ -1,6 +1,6 @@
 # Earth Defender
 
-An arcade horizontal space shooter built with React, TypeScript, Tailwind CSS, and Three.js (WebGL), featuring an interactive C++20 / WebAssembly (WASM) engine architecture inspector.
+An arcade horizontal space shooter built with React, TypeScript, Tailwind CSS, and Three.js (WebGL). All art is procedurally drawn and all sound is synthesised at runtime with the Web Audio API.
 
 ## Local Development
 
