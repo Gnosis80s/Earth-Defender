@@ -30,7 +30,7 @@ export class Launchpad {
     });
     this.tarmacMesh = new THREE.Mesh(tarmacGeo, tarmacMat);
     this.tarmacMesh.position.set(-112, -220, 0); // shift left slightly to keep launchpad aligned
-    this.tarmacMesh.renderOrder = 2;
+    this.tarmacMesh.renderOrder = 7;
     this.group.add(this.tarmacMesh);
 
     // 2. Left Gantry Clamp Arm (at ship launch pad x = -220)
@@ -42,7 +42,7 @@ export class Launchpad {
     });
     this.leftGantryMesh = new THREE.Mesh(gantryGeo, leftGantryMat);
     this.leftGantryMesh.position.set(-258, -155, 1);
-    this.leftGantryMesh.renderOrder = 4;
+    this.leftGantryMesh.renderOrder = 8;
     this.group.add(this.leftGantryMesh);
 
     // 3. Right Gantry Clamp Arm (Flipped X)
@@ -54,7 +54,7 @@ export class Launchpad {
     this.rightGantryMesh = new THREE.Mesh(gantryGeo, rightGantryMat);
     this.rightGantryMesh.scale.x = -1;
     this.rightGantryMesh.position.set(-182, -155, 1);
-    this.rightGantryMesh.renderOrder = 4;
+    this.rightGantryMesh.renderOrder = 8;
     this.group.add(this.rightGantryMesh);
 
     // 4. Command Control Tower (240 wide x 360 tall)
@@ -66,7 +66,7 @@ export class Launchpad {
     });
     this.towerMesh = new THREE.Mesh(towerGeo, towerMat);
     this.towerMesh.position.set(-330, -80, -1);
-    this.towerMesh.renderOrder = 1;
+    this.towerMesh.renderOrder = 6;
     this.group.add(this.towerMesh);
 
     // 5. Fuel Silo & Defense Radar Compound (240 wide x 280 tall)
@@ -78,7 +78,7 @@ export class Launchpad {
     });
     this.siloMesh = new THREE.Mesh(siloGeo, siloMat);
     this.siloMesh.position.set(100, -110, -1); // Brought way in from 240
-    this.siloMesh.renderOrder = 1;
+    this.siloMesh.renderOrder = 6;
     this.group.add(this.siloMesh);
 
     // 6. Command Signboard Banner (Removed)
@@ -112,8 +112,14 @@ export class Launchpad {
     });
     this.searchlightMesh = new THREE.Mesh(lightGeo, lightMat);
     this.searchlightMesh.position.set(-330, 150, -2);
-    this.searchlightMesh.renderOrder = 0;
+    this.searchlightMesh.renderOrder = 5;
     this.group.add(this.searchlightMesh);
+
+    // Night grade: these textures are painted in daylight colours, but the pad
+    // sits in the moonlit Stage 1 scene. A cool, dim multiply ties it in.
+    for (const m of [this.tarmacMesh, this.leftGantryMesh, this.rightGantryMesh, this.towerMesh, this.siloMesh]) {
+      (m.material as THREE.MeshBasicMaterial).color.setHex(0x8f9ac4);
+    }
 
     this.group.position.set(x, y, -2);
     scene.add(this.group);

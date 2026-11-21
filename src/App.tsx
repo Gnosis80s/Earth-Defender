@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Game } from './game/Game';
+import { AssetManager } from './game/AssetManager';
 import { InputManager } from './game/InputManager';
 import { AchievementManager, Achievement } from './game/AchievementManager';
 import { SoundManager } from './game/SoundManager';
@@ -69,6 +70,9 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Build the big procedural backdrops while the player is on the menu.
+    AssetManager.prewarmInIdle();
+    if (import.meta.env.DEV) (window as any).__assets = AssetManager; // dev-only, for profiling/tests
     AchievementManager.init((achievement) => {
       setToasts((prev) => [...prev, achievement]);
       setTimeout(() => {

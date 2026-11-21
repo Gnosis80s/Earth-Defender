@@ -15,6 +15,16 @@ export class Level {
   bgCity1!: THREE.Mesh;
   bgCity2!: THREE.Mesh;
   bgMoon!: THREE.Mesh;
+  // Stage 1 night-city extras (see art/Stage1Art.ts)
+  bgSky!: THREE.Mesh;
+  bgClouds1!: THREE.Mesh;
+  bgClouds2!: THREE.Mesh;
+  bgCityFar1!: THREE.Mesh;
+  bgCityFar2!: THREE.Mesh;
+  moonHalo!: THREE.Mesh;
+  searchlights: THREE.Mesh[] = [];
+  private cloudDrift = 0;
+  private beamTime = 0;
   bgEarth!: THREE.Mesh;
   bgLunar1!: THREE.Mesh;
   bgLunar2!: THREE.Mesh;
@@ -115,29 +125,95 @@ export class Level {
     this.scene.add(this.starsPoints);
   }
 
+  /**
+   * Stage 1 night-city layers, back to front: camera-anchored sky gradient,
+   * moon halo, drifting clouds, far skyline, sweeping searchlights. (The
+   * mountains and near skyline reuse the bgMountains/bgCity meshes.)
+   */
+  private initNightCity(tileGeo: THREE.PlaneGeometry) {
+    const tex = (name: string) => AssetManager.getTexture(name);
+
+    this.bgSky = new THREE.Mesh(
+      new THREE.PlaneGeometry(800, 600),
+      new THREE.MeshBasicMaterial({ map: tex('night_sky'), depthWrite: false })
+    );
+    this.bgSky.position.set(0, 0, -30);
+    this.bgSky.renderOrder = -2;
+    this.scene.add(this.bgSky);
+
+    this.moonHalo = new THREE.Mesh(
+      new THREE.PlaneGeometry(220, 220),
+      new THREE.MeshBasicMaterial({ map: tex('moon_halo'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
+    );
+    this.moonHalo.position.set(300, 200, -16);
+    this.moonHalo.renderOrder = 1;
+    this.scene.add(this.moonHalo);
+
+    const cloudGeo = new THREE.PlaneGeometry(800, 200);
+    const cloudMat = new THREE.MeshBasicMaterial({ map: tex('night_clouds'), transparent: true, depthWrite: false });
+    this.bgClouds1 = new THREE.Mesh(cloudGeo, cloudMat);
+    this.bgClouds2 = new THREE.Mesh(cloudGeo, cloudMat);
+    for (const m of [this.bgClouds1, this.bgClouds2]) {
+      m.position.set(0, 130, -13);
+      m.renderOrder = 1;
+      this.scene.add(m);
+    }
+
+    const farMat = new THREE.MeshBasicMaterial({ map: tex('bg_city_far'), transparent: true, depthWrite: false });
+    this.bgCityFar1 = new THREE.Mesh(tileGeo, farMat);
+    this.bgCityFar2 = new THREE.Mesh(tileGeo, farMat);
+    for (const m of [this.bgCityFar1, this.bgCityFar2]) {
+      m.position.set(0, -100, -8);
+      m.renderOrder = 3;
+      this.scene.add(m);
+    }
+
+    // Beam geometry pivots at its base so rotation sweeps it like a real searchlight.
+    const beamGeo = new THREE.PlaneGeometry(110, 380);
+    beamGeo.translate(0, 190, 0);
+    const beamMat = new THREE.MeshBasicMaterial({
+      map: tex('searchlight_beam'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55,
+    });
+    for (let k = 0; k < 3; k++) {
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.set(0, -215, -6);
+      beam.renderOrder = 3;
+      this.scene.add(beam);
+      this.searchlights.push(beam);
+    }
+  }
+
+  private setNightCityVisible(on: boolean) {
+    for (const m of [this.bgSky, this.moonHalo, this.bgClouds1, this.bgClouds2, this.bgCityFar1, this.bgCityFar2, ...this.searchlights]) {
+      m.visible = on;
+    }
+  }
+
   initBackgrounds() {
     const geo = new THREE.PlaneGeometry(800, 400);
     this.matMtn = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_mountains'), transparent: true, depthWrite: false });
     this.bgMountains1 = new THREE.Mesh(geo, this.matMtn);
-    this.bgMountains1.position.set(0, -140, -10);
-    this.bgMountains1.renderOrder = 1;
+    this.bgMountains1.position.set(0, -100, -10);
+    this.bgMountains1.renderOrder = 2;
     this.bgMountains2 = new THREE.Mesh(geo, this.matMtn);
-    this.bgMountains2.position.set(800, -140, -10);
-    this.bgMountains2.renderOrder = 1;
+    this.bgMountains2.position.set(800, -100, -10);
+    this.bgMountains2.renderOrder = 2;
     
     this.scene.add(this.bgMountains1);
     this.scene.add(this.bgMountains2);
 
     this.matCity = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_city'), transparent: true, depthWrite: false });
     this.bgCity1 = new THREE.Mesh(geo, this.matCity);
-    this.bgCity1.position.set(0, -130, -5);
-    this.bgCity1.renderOrder = 2;
+    this.bgCity1.position.set(0, -100, -5);
+    this.bgCity1.renderOrder = 4;
     this.bgCity2 = new THREE.Mesh(geo, this.matCity);
-    this.bgCity2.position.set(800, -130, -5);
-    this.bgCity2.renderOrder = 2;
+    this.bgCity2.position.set(800, -100, -5);
+    this.bgCity2.renderOrder = 4;
 
     this.scene.add(this.bgCity1);
     this.scene.add(this.bgCity2);
+
+    this.initNightCity(geo);
 
     const moonGeo = new THREE.PlaneGeometry(128, 128);
     const moonMat = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('moon'), transparent: true, depthWrite: false });
@@ -290,13 +366,15 @@ export class Level {
       this.bgCavern1.visible = false;
       this.bgCavern2.visible = false;
       this.bgMoon.visible = true;
-      this.bgMoon.scale.set(0.5, 0.5, 1);
-      this.bgMoon.position.y = 220;
+      this.bgMoon.scale.set(0.8, 0.8, 1);
+      this.bgMoon.position.y = 200;
+      this.setNightCityVisible(true);
 
       // Create UK Military Base Launchpad at Stage 1 start
       this.launchpad = new Launchpad(this.scene, 0, 0);
     } else {
       // Level 2 and onwards: Remove city/mountain background and replace completely with deep space starfield!
+      this.setNightCityVisible(false);
       this.bgMountains1.visible = false;
       this.bgMountains2.visible = false;
       this.bgCity1.visible = false;
@@ -408,8 +486,34 @@ export class Level {
     this.starsPoints.visible = (this.currentStage !== 5);
     this.starsPoints.position.x = camX;
 
-    // Background layer 1
-    const mtnX = camX * 0.2;
+    // Stage 1 night-city layers
+    if (this.currentStage === 1) {
+      this.bgSky.position.x = camX;
+
+      this.cloudDrift += dt * 6; // clouds drift on their own as well as parallaxing
+      const cloudX = camX * 0.06 + this.cloudDrift;
+      this.bgClouds1.position.x = camX - (cloudX % 800);
+      this.bgClouds2.position.x = this.bgClouds1.position.x + 800;
+
+      const farX = camX * 0.25;
+      this.bgCityFar1.position.x = camX - (farX % 800);
+      this.bgCityFar2.position.x = this.bgCityFar1.position.x + 800;
+
+      // Searchlights are planted in the far skyline and sweep slowly.
+      this.beamTime += dt;
+      const tileLeft = this.bgCityFar1.position.x - 400;
+      const anchors = [150, 430, 690];
+      for (let k = 0; k < this.searchlights.length; k++) {
+        let bx = tileLeft + anchors[k];
+        if (bx < camX - 460) bx += 800;
+        const beam = this.searchlights[k];
+        beam.position.x = bx;
+        beam.rotation.z = Math.sin(this.beamTime * (0.35 + k * 0.08) + k * 2.1) * 0.55;
+      }
+    }
+
+    // Background layer 1 (mountains)
+    const mtnX = camX * 0.1;
     this.bgMountains1.position.x = camX - (mtnX % 800);
     this.bgMountains2.position.x = this.bgMountains1.position.x + 800;
 
@@ -521,8 +625,10 @@ export class Level {
       this.bgMoon.position.x = camX + 260 - (camX * 0.03); // Deep space view
       this.bgMoon.position.y = 180;
     } else if (this.currentStage === 1) {
-      this.bgMoon.position.x = camX + 300 - (camX * 0.01); // Small distant moon
-      this.bgMoon.position.y = 210;
+      this.bgMoon.position.x = camX + 290 - (camX * 0.01);
+      this.bgMoon.position.y = 200;
+      this.moonHalo.position.x = this.bgMoon.position.x;
+      this.moonHalo.position.y = this.bgMoon.position.y;
     }
 
     // Level 2 Asteroid Field State Management
