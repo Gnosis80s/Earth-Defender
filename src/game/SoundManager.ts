@@ -20,6 +20,16 @@ export class SoundManager {
     }
   }
 
+  /** Suspend/resume all audio (used by pause so in-flight sounds freeze too). */
+  static setSuspended(suspended: boolean) {
+    if (!this.audioCtx) return;
+    if (suspended && this.audioCtx.state === 'running') {
+      this.audioCtx.suspend();
+    } else if (!suspended && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
+  }
+
   private static getSharedNoiseBuffer(ctx: AudioContext): AudioBuffer {
     if (!this.sharedNoiseBuffer) {
       const bufferSize = ctx.sampleRate * 2.0; // 2 seconds pre-baked noise

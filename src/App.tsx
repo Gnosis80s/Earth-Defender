@@ -31,6 +31,7 @@ export default function App() {
   const [missileWarning, setMissileWarning] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showReady, setShowReady] = useState(false);
+  const [paused, setPaused] = useState(false);
   
   // Customization Options
   const [selectedShip, setSelectedShip] = useState('player');
@@ -203,6 +204,20 @@ export default function App() {
     }
   };
 
+  const pauseIfPlaying = () => {
+    if (gameState === 'playing') gameRef.current?.setPaused(true);
+  };
+
+  const quitToMenu = () => {
+    SoundManager.playBloop();
+    gameRef.current?.stop();
+    setBossData(null);
+    setAsteroidWarning(false);
+    setMissileWarning(false);
+    setClearedStageNotice(null);
+    setGameState('menu');
+  };
+
   const startGame = (stageParam?: number | React.SyntheticEvent) => {
     SoundManager.init();
     SoundManager.playBloop();
@@ -222,6 +237,8 @@ export default function App() {
     if (!gameRef.current && canvasRef.current) {
       gameRef.current = new Game();
       gameRef.current.init(canvasRef.current);
+      // Dev-only handle for automated play-testing / debugging from the console.
+      if (import.meta.env.DEV) (window as any).__game = gameRef.current;
     }
     
     if (gameRef.current) {
@@ -260,16 +277,13 @@ export default function App() {
         }
       };
       gameRef.current.onWeaponLevelUpdate = setWeaponLevel;
-      gameRef.current.onStageUpdate = (s) => {
-        setStage(s);
-        setShowReady(true);
-        SoundManager.playLaunchMission();
-        if (gameRef.current) gameRef.current.isReadyPhase = true;
-        setTimeout(() => {
-          setShowReady(false);
-          if (gameRef.current) gameRef.current.isReadyPhase = false;
-        }, 2000);
+      gameRef.current.onStageUpdate = setStage;
+      // The game owns the READY phase timing (in game time, so it respects pause).
+      gameRef.current.onReadyChange = (showing) => {
+        setShowReady(showing);
+        if (showing) SoundManager.playLaunchMission();
       };
+      gameRef.current.onPauseChange = setPaused;
       gameRef.current.onBossHpUpdate = setBossData;
       gameRef.current.onAsteroidWarningUpdate = setAsteroidWarning;
       gameRef.current.onMissileWarningUpdate = setMissileWarning;
@@ -313,8 +327,18 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-2.5 sm:gap-4">
+            {gameState === 'playing' && (
+              <button
+                onClick={() => gameRef.current?.togglePause()}
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/30 rounded-md text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                title="Pause (Esc / P)"
+              >
+                <span className="text-sm leading-none">{paused ? '▶' : '❚❚'}</span>
+                <span className="hidden lg:inline uppercase tracking-wider">{paused ? 'Resume' : 'Pause'}</span>
+              </button>
+            )}
             <button 
-              onClick={() => { SoundManager.init(); SoundManager.playBloop(); setShowCppModal(true); }}
+              onClick={() => { SoundManager.init(); SoundManager.playBloop(); pauseIfPlaying(); setShowCppModal(true); }}
               className="px-3 py-1.5 bg-cyan-950/70 hover:bg-cyan-900 border border-cyan-400/80 rounded-md text-cyan-300 font-bold text-xs flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.3)] transition-all cursor-pointer hover:scale-105 active:scale-95"
               title="Inspect C++ / WASM Engine Core"
             >
@@ -322,7 +346,7 @@ export default function App() {
               <span className="hidden sm:inline uppercase tracking-wider">C++ / WASM</span>
             </button>
             <button 
-              onClick={() => { SoundManager.init(); SoundManager.playBloop(); setShowAchievementsModal(true); }}
+              onClick={() => { SoundManager.init(); SoundManager.playBloop(); pauseIfPlaying(); setShowAchievementsModal(true); }}
               className="px-3 py-1.5 bg-amber-950/70 hover:bg-amber-900 border border-amber-400/80 rounded-md text-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-[0_0_12px_rgba(251,191,36,0.3)] transition-all cursor-pointer hover:scale-105 active:scale-95"
             >
               <span className="text-sm">🏆</span>
@@ -702,7 +726,7 @@ export default function App() {
                 </button>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <button 
-                    onClick={() => { SoundManager.init(); SoundManager.playBloop(); setShowCppModal(true); }}
+                    onClick={() => { SoundManager.init(); SoundManager.playBloop(); pauseIfPlaying(); setShowCppModal(true); }}
                     className="flex-1 sm:flex-none px-4 py-3.5 bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 font-bold text-xs sm:text-sm border border-cyan-400/80 rounded-xl shadow-[0_0_12px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-105"
                   >
                     <span className="text-cyan-400">⚡</span>
@@ -716,7 +740,7 @@ export default function App() {
                     <span>STORY</span>
                   </button>
                   <button 
-                    onClick={() => { SoundManager.init(); SoundManager.playBloop(); setShowAchievementsModal(true); }}
+                    onClick={() => { SoundManager.init(); SoundManager.playBloop(); pauseIfPlaying(); setShowAchievementsModal(true); }}
                     className="flex-1 sm:flex-none px-4 py-3.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold text-xs sm:text-sm border border-amber-400/80 rounded-xl shadow-[0_0_12px_rgba(245,158,11,0.3)] transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-105"
                   >
                     <span>🏆</span>
@@ -809,6 +833,31 @@ export default function App() {
                     className="flex-1 py-3.5 bg-gray-900 hover:bg-gray-800 text-gray-200 font-black text-sm border border-gray-700 rounded-xl transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
                   >
                     MAIN MENU
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {gameState === 'playing' && paused && (
+            <div className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center z-[60] backdrop-blur-sm p-6">
+              <div className="border-2 border-cyan-400/80 bg-black/85 p-8 rounded-2xl max-w-sm w-full text-center shadow-[0_0_50px_rgba(6,182,212,0.45)] flex flex-col items-center">
+                <h1 className="text-5xl font-black italic text-cyan-300 tracking-[0.2em] mb-2 drop-shadow-[0_0_20px_rgba(34,211,238,0.8)]">
+                  PAUSED
+                </h1>
+                <p className="text-cyan-200/70 text-xs uppercase tracking-widest mb-6">Esc / P / Start to resume</p>
+                <div className="flex flex-col gap-3 w-full">
+                  <button
+                    onClick={() => gameRef.current?.setPaused(false)}
+                    className="py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-sm border border-cyan-300 rounded-xl transition-all transform hover:scale-105 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(6,182,212,0.5)]"
+                  >
+                    RESUME
+                  </button>
+                  <button
+                    onClick={quitToMenu}
+                    className="py-3.5 bg-gray-900 hover:bg-gray-800 text-gray-200 font-black text-sm border border-gray-700 rounded-xl transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    QUIT TO MENU
                   </button>
                 </div>
               </div>

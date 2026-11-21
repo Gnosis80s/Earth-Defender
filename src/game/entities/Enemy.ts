@@ -192,8 +192,7 @@ export class Enemy extends Entity {
           game.addScreenShake(18, 0.45);
         }
         if (game && game.tryDropPowerup) {
-          game.score += this.type === 'subboss_gatekeeper' ? 1000 : 800;
-          if (game.onScoreUpdate) game.onScoreUpdate(game.score);
+          game.addScore(this.type === 'subboss_gatekeeper' ? 1000 : 800);
           game.tryDropPowerup(this.mesh.position.x, this.mesh.position.y - 20, true, ['P', 'M', 'S']);
         }
         this.mesh.visible = false;

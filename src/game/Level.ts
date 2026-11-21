@@ -335,6 +335,30 @@ export class Level {
     return !this.bossActive && !(this.blastDoorActive && !this.blastDoorCleared);
   }
 
+  /**
+   * Scrolls the starfield's per-star offsets. Purely cosmetic, so it runs at
+   * render rate (outside the fixed simulation step) to stay smooth on
+   * high-refresh displays; vertex buffers can't be interpolated generically.
+   */
+  updateStarfield(dt: number) {
+    if (!this.starsPoints.visible || dt <= 0) return;
+    const posAttr = this.starsPoints.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < 300; i++) {
+      this.starPositions[i * 3] -= (40 + (i % 5) * 25) * dt;
+      if (this.starPositions[i * 3] < -450) {
+        this.starPositions[i * 3] += 900;
+        if (this.currentStage === 1) {
+          this.starPositions[i * 3 + 1] = 40 + Math.random() * 240;
+        } else if (this.currentStage === 4) {
+          this.starPositions[i * 3 + 1] = -10 + Math.random() * 280;
+        } else {
+          this.starPositions[i * 3 + 1] = (Math.random() - 0.5) * 560;
+        }
+      }
+    }
+    posAttr.needsUpdate = true;
+  }
+
   update(dt: number, particles?: ParticleManager, player?: any) {
     if (this.launchpad) {
       this.launchpad.update(dt);
@@ -352,26 +376,9 @@ export class Level {
     // Parallax scrolling
     const camX = this.camera.position.x;
     
-    // Starfield animation anchored to camera
+    // Starfield anchored to camera (per-star scrolling happens in updateStarfield)
     this.starsPoints.visible = (this.currentStage !== 5);
-    if (this.starsPoints.visible) {
-      this.starsPoints.position.x = camX;
-      const posAttr = this.starsPoints.geometry.attributes.position as THREE.BufferAttribute;
-      for (let i = 0; i < 300; i++) {
-        this.starPositions[i * 3] -= (40 + (i % 5) * 25) * dt;
-        if (this.starPositions[i * 3] < -450) {
-          this.starPositions[i * 3] += 900;
-          if (this.currentStage === 1) {
-            this.starPositions[i * 3 + 1] = 40 + Math.random() * 240;
-          } else if (this.currentStage === 4) {
-            this.starPositions[i * 3 + 1] = -10 + Math.random() * 280;
-          } else {
-            this.starPositions[i * 3 + 1] = (Math.random() - 0.5) * 560;
-          }
-        }
-      }
-      posAttr.needsUpdate = true;
-    }
+    this.starsPoints.position.x = camX;
 
     // Background layer 1
     const mtnX = camX * 0.2;
