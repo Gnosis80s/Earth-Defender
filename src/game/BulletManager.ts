@@ -60,12 +60,15 @@ export class BulletManager {
       blending: THREE.AdditiveBlending 
     });
     
+    // Enemy shots use normal (not additive) blending so their dark outline
+    // survives and they read clearly against stars, explosions and bright
+    // backgrounds. Readability of enemy fire is the #1 rule of shmup visuals.
     this.materialEnemy = new THREE.MeshBasicMaterial({ 
       map: AssetManager.getTexture('bulletEnemy'), 
       transparent: true,
       depthWrite: false,
       alphaTest: 0.05,
-      blending: THREE.AdditiveBlending 
+      blending: THREE.NormalBlending
     });
     this.materialTurretLaser = new THREE.MeshBasicMaterial({
       map: AssetManager.getTexture('bulletTurretLaser'),
@@ -140,9 +143,13 @@ export class BulletManager {
       b.mesh.scale.set(1, 1, 1);
     } else {
       b.mesh.material = this.materialEnemy;
-      b.mesh.rotation.z = 0;
-      b.mesh.scale.set(1, 1, 1);
+      // Texture tip faces left; aim it along the velocity.
+      b.mesh.rotation.z = Math.atan2(vy, vx) + Math.PI;
+      // 16x8 quad -> ~21x16 so the 26x18 texture keeps its proportions.
+      b.mesh.scale.set(1.3, 2.0, 1);
     }
+    // Enemy fire draws above explosions/particles (15) so it's never hidden.
+    b.mesh.renderOrder = isPlayer ? 12 : 20;
     this.bullets.push(b);
   }
 

@@ -203,6 +203,8 @@ export class Boss extends Entity {
       this.damageFlashTimer -= dt;
     }
 
+    if (this.isExploding) this.setFlash(0);
+
     if (!this.isExploding) {
       const isCritical = this.hp > 0 && (this.hp / this.maxHp) <= 0.10;
       const mat = this.mesh.material as THREE.MeshBasicMaterial;
@@ -211,11 +213,13 @@ export class Boss extends Entity {
         // Red alert flash strobe when under 10% health
         const flashPhase = Math.floor(time * 26) % 2 === 0;
         if (mat) mat.color.set(flashPhase ? 0xff1133 : 0xffffff);
-      } else if (this.damageFlashTimer > 0) {
-        if (mat) mat.color.set(0xffffff);
       } else {
         if (mat && mat.color.getHex() !== 0xffffff) mat.color.set(0xffffff);
       }
+
+      // White hit-flash, strobed and softer than regular enemies: the boss
+      // is under near-constant fire and must not wash out.
+      this.setFlash(this.damageFlashTimer > 0 ? (Math.floor(time * 30) % 2 === 0 ? 0.55 : 0.15) : 0);
 
       // Check turrets for <10% health flashing
       for (const t of this.turrets) {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Entity } from './Entity';
+import { Entity, addFlashUniform } from './Entity';
 import { AssetManager } from '../AssetManager';
 import { BulletManager } from '../BulletManager';
 import { ParticleManager } from '../ParticleManager';
@@ -15,12 +15,17 @@ export class Enemy extends Entity {
   rotSpeed: number = 0;
   maxHp: number = 1;
   damageFlashTimer: number = 0;
+  /** 'pincer' pattern: height to converge on after entering from a screen edge. */
+  targetY: number = 0;
+  /** 'peel' pattern: +1 breaks upward, -1 breaks downward. */
+  peelDir: number = 1;
 
   isExploding: boolean = false;
   explodeTimer: number = 0;
   explodeTickTimer: number = 0;
 
   turretLauncherMesh: THREE.Mesh | null = null;
+  private turretFlash: { value: number } | null = null;
   currentTurretAngle: number = Math.PI;
   targetTurretAngle: number = Math.PI;
 
@@ -104,6 +109,7 @@ export class Enemy extends Entity {
         alphaTest: 0.05,
         depthWrite: false
       });
+      this.turretFlash = addFlashUniform(launcherMat);
       this.turretLauncherMesh = new THREE.Mesh(launcherGeo, launcherMat);
       this.turretLauncherMesh.renderOrder = 11;
       this.turretLauncherMesh.position.set(0, 0, 0.1);
@@ -115,7 +121,7 @@ export class Enemy extends Entity {
   takeDamage(amount: number) {
     if (this.isExploding) return;
     this.hp -= amount;
-    this.damageFlashTimer = 0.06;
+    this.damageFlashTimer = 0.08;
     if (this.hp <= 0) {
       if (this.type === 'subboss_gatekeeper' || this.type === 'subboss1') {
         this.hp = 0;
@@ -145,14 +151,16 @@ export class Enemy extends Entity {
       const flashRed = Math.floor(time * 28) % 2 === 0;
       if (mat) mat.color.set(flashRed ? 0xff2222 : 0xffffff);
       if (turretMat) turretMat.color.set(flashRed ? 0xff2222 : 0xffffff);
-    } else if (this.damageFlashTimer > 0) {
-      // Crisp white flash on receiving damage
-      if (mat) mat.color.set(0xffffff);
-      if (turretMat) turretMat.color.set(0xffffff);
     } else {
       if (mat && mat.color.getHex() !== 0xffffff) mat.color.set(0xffffff);
       if (turretMat && turretMat.color.getHex() !== 0xffffff) turretMat.color.set(0xffffff);
     }
+
+    // White hit-flash. Strobes between strong and faint so an enemy under
+    // sustained fire stays readable instead of turning into a white blob.
+    const flash = this.damageFlashTimer > 0 ? (Math.floor(time * 30) % 2 === 0 ? 0.9 : 0.3) : 0;
+    this.setFlash(flash);
+    if (this.turretFlash) this.turretFlash.value = flash;
 
     if (this.isExploding) {
       this.explodeTimer -= dt;
@@ -228,6 +236,21 @@ export class Enemy extends Entity {
     } else if (this.pattern === 'straight') {
       this.vx = -200;
       this.vy = 0;
+    } else if (this.pattern === 'pincer') {
+      // Drop in from the top/bottom edge, ease onto targetY, then fly across.
+      this.vx = -150;
+      this.vy = (this.targetY - this.mesh.position.y) * 2.2;
+    } else if (this.pattern === 'peel') {
+      // Fly in level, then break away in a widening arc once a third of the
+      // way across the screen.
+      const peelLine = cameraX + 130;
+      if (this.mesh.position.x > peelLine && this.timer < 6) {
+        this.vx = -230;
+        this.vy = 0;
+      } else {
+        this.vx = -230;
+        this.vy = Math.min(this.vy * this.peelDir + 420 * dt, 240) * this.peelDir;
+      }
     } else if (this.pattern === 'heavy') {
       if (this.mesh.position.x > cameraX + 200) {
         this.vx = -100;

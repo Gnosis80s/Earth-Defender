@@ -190,6 +190,27 @@ export class Game {
     this.onReadyChange(false);
   }
 
+  /**
+   * Size the drawing buffer for a playfield shown at cssW x cssH CSS pixels.
+   *
+   * "Sharp bilinear" scaling: render the fixed 800x600 world at the smallest
+   * *integer* multiple that covers the display, and let the browser scale that
+   * down smoothly. Nearest-filtered pixel art stays evenly crisp at any window
+   * size, without the uneven pixel widths of direct non-integer upscaling.
+   */
+  resize(cssW: number, cssH: number) {
+    if (!this.renderer || cssW <= 0 || cssH <= 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    const scale = Math.max(cssW / 800, cssH / 600) * dpr;
+    const k = Math.min(4, Math.max(1, Math.ceil(scale - 0.01)));
+    const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    if (size.x !== 800 * k || size.y !== 600 * k) {
+      this.renderer.setSize(800 * k, 600 * k, false);
+      // Resizing clears the canvas; redraw so a paused frame doesn't vanish.
+      if (this.scene && !this.stopped) this.render(1, 0);
+    }
+  }
+
   setPaused(paused: boolean) {
     if (paused && (this.stopped || this.gameOver || this.victory)) return;
     if (this.paused === paused) return;
@@ -216,7 +237,8 @@ export class Game {
 
   init(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-    this.renderer.setSize(800, 600);
+    // Drawing-buffer size is managed by resize(); CSS size by the page layout.
+    this.renderer.setSize(800, 600, false);
     this.renderer.setClearColor(0x050510);
 
     this.scene = new THREE.Scene();
@@ -505,28 +527,42 @@ export class Game {
     const interpolated = this.interpolated;
     interpolated.length = 0;
 
-    if (lerpOn) {
-      const children = this.scene.children;
-      const limit = Game.TELEPORT_THRESHOLD;
-      for (let i = 0; i < children.length; i++) {
-        const o = children[i];
-        if (!o.visible) continue;
-        const ud = o.userData;
-        if (ud.istep !== this.stepIndex) continue; // spawned during last step: no history
-        const dx = o.position.x - ud.ipx;
-        const dy = o.position.y - ud.ipy;
-        if (dx > limit || dx < -limit || dy > limit || dy < -limit) continue; // wrapped / teleported
-        let dr = o.rotation.z - ud.ipr;
-        if (dr > Math.PI || dr < -Math.PI) dr = 0;
+    const children = this.scene.children;
+    const limit = Game.TELEPORT_THRESHOLD;
+    for (let i = 0; i < children.length; i++) {
+      const o = children[i];
+      if (!o.visible) continue;
+      const ud = o.userData;
+      const offsetY: number = ud.renderOffsetY || 0;
 
-        ud.icx = o.position.x;
-        ud.icy = o.position.y;
-        ud.icr = o.rotation.z;
-        o.position.x = ud.ipx + dx * alpha;
-        o.position.y = ud.ipy + dy * alpha;
-        o.rotation.z = ud.ipr + dr * alpha;
-        interpolated.push(o);
+      let x = o.position.x;
+      let y = o.position.y;
+      let r = o.rotation.z;
+      let changed = offsetY !== 0;
+
+      // ud.istep !== stepIndex means it spawned during the last step: no history.
+      if (lerpOn && ud.istep === this.stepIndex) {
+        const dx = x - ud.ipx;
+        const dy = y - ud.ipy;
+        // Large jumps are wraps/teleports: snap instead of smearing across the screen.
+        if (dx <= limit && dx >= -limit && dy <= limit && dy >= -limit) {
+          let dr = r - ud.ipr;
+          if (dr > Math.PI || dr < -Math.PI) dr = 0;
+          x = ud.ipx + dx * alpha;
+          y = ud.ipy + dy * alpha;
+          r = ud.ipr + dr * alpha;
+          changed = true;
+        }
       }
+
+      if (!changed) continue;
+      ud.icx = o.position.x;
+      ud.icy = o.position.y;
+      ud.icr = o.rotation.z;
+      o.position.x = x;
+      o.position.y = y + offsetY; // cosmetic offsets (e.g. hover bob) never touch the sim
+      o.rotation.z = r;
+      interpolated.push(o);
     }
 
     // Camera: interpolate the scroll, then add shake on top (render-only).

@@ -5,6 +5,7 @@ import { Boss } from './entities/Boss';
 import { ParticleManager } from './ParticleManager';
 import { BlastDoor } from './entities/BlastDoor';
 import { Launchpad } from './entities/Launchpad';
+import { STAGE_WAVES, STAGE_SHIP_CAP, SpawnSpec, expandFormation } from './Waves';
 
 export class Level {
   scene: THREE.Scene;
@@ -62,6 +63,11 @@ export class Level {
   stage4Subboss: Enemy | null = null;
 
   launchpad: Launchpad | null = null;
+
+  // Wave director state (see Waves.ts)
+  private waveIndex = 0;
+  private waveTimer = 0;
+  private pendingSpawns: { delay: number; spec: SpawnSpec }[] = [];
 
   onAsteroidWarningUpdate: (active: boolean) => void = () => {};
   onMissileWarningUpdate: (active: boolean) => void = () => {};
@@ -211,6 +217,9 @@ export class Level {
     this.lunarTurretSectionActive = false;
     this.turretSpawnTimer = 0;
     this.enemySpawnDelay = 2.0;
+    this.waveIndex = 0;
+    this.waveTimer = 0;
+    this.pendingSpawns = [];
     this.subbossSpawned = false;
     this.blastDoorActive = false;
     this.blastDoorCleared = false;
@@ -583,6 +592,9 @@ export class Level {
       }
     }
 
+    // Ships from already-launched formations keep arriving on their own timers.
+    this.updatePendingSpawns(dt, camX);
+
     // Spawning logic
     if (!this.isCameraScrolling(player)) {
       // Pause enemy spawn delay countdown and spawning during takeoff/cutscenes
@@ -629,39 +641,13 @@ export class Level {
             this.enemies.push(turret);
           }
           
-          // Also spawn occasional regular enemies, but fewer
-          let activeShips = this.enemies.filter(e => !e.type.startsWith('asteroid') && e.type !== 'turret').length;
-          let maxShips = 3;
-          let spawnRate = 0.008;
-
-          if (this.hardcoreMode) {
-            maxShips += 2;
-            spawnRate *= 2;
-          }
-
-          if (activeShips < maxShips && Math.random() < spawnRate) {
-            this.spawnWave(camX);
-          }
+          // Air waves continue at half density while the turrets carry the section.
+          this.runWaveDirector(dt, 0.5, 1.6);
         } else {
-          // Regular enemy spawning (tuned for balanced difficulty)
+          // Formations hold off while a sub-boss has the stage.
           const subbossActive = this.enemies.some(e => e.active && e.type === 'subboss1');
-          
-          let activeShips = this.enemies.filter(e => !e.type.startsWith('asteroid')).length;
-          let maxShips = this.currentStage === 2 ? 4 : (this.currentStage === 3 ? 5 : (this.currentStage === 5 ? 8 : 7));
-          let spawnRate = this.currentStage === 2 ? 0.012 : (this.currentStage === 3 ? 0.018 : (this.currentStage === 5 ? 0.025 : 0.02));
-
-          if (subbossActive) {
-            maxShips = 1;
-            spawnRate = 0.002;
-          }
-
-          if (this.hardcoreMode) {
-            maxShips += 5;
-            spawnRate *= 2;
-          }
-
-          if (activeShips < maxShips && Math.random() < spawnRate) {
-            this.spawnWave(camX);
+          if (!subbossActive) {
+            this.runWaveDirector(dt, 1, 1);
           }
         }
       } else if (!this.bossActive && !this.bossDefeated && this.distance >= this.bossDistance) {
@@ -681,81 +667,52 @@ export class Level {
     }
   }
 
-  spawnWave(camX: number) {
-    const y = this.currentStage === 5 ? (Math.random() - 0.5) * 260 : (Math.random() - 0.5) * 520;
+  /**
+   * Launch the next scripted formation when its gap has elapsed and there's
+   * room under the ship cap. `capScale`/`gapScale` thin the waves out during
+   * sections where something else (e.g. ground turrets) provides the threat.
+   */
+  private runWaveDirector(dt: number, capScale: number, gapScale: number) {
+    this.waveTimer -= dt;
+    if (this.waveTimer > 0) return;
 
-    let type = 'scout';
-    let pattern = 'straight';
+    const script = STAGE_WAVES[this.currentStage];
+    if (!script || script.length === 0) return;
 
-    if (this.currentStage === 1) {
-      const heavyChance = 0.2;
-      type = Math.random() < heavyChance ? 'heavy' : 'scout';
-      pattern = type === 'heavy' ? 'heavy' : (Math.random() > 0.5 ? 'wave' : 'straight');
-    } else if (this.currentStage === 2) {
-      // Level 2 includes new Interceptors and Snipers!
-      const rand = Math.random();
-      if (rand < 0.35) {
-        type = 'interceptor';
-        pattern = 'swoop';
-      } else if (rand < 0.65) {
-        type = 'sniper';
-        pattern = 'zigzag';
-      } else if (rand < 0.85) {
-        type = 'heavy';
-        pattern = 'heavy';
-      } else {
-        type = 'scout';
-        pattern = 'wave';
-      }
-    } else if (this.currentStage === 3) {
-      // Level 3 Lunar Approach: High-orbit interceptors, snipers, & heavy alien destroyers
-      const rand = Math.random();
-      if (rand < 0.35) {
-        type = 'interceptor';
-        pattern = 'swoop';
-      } else if (rand < 0.65) {
-        type = 'sniper';
-        pattern = 'zigzag';
-      } else if (rand < 0.85) {
-        type = 'heavy';
-        pattern = 'heavy';
-      } else {
-        type = 'scout';
-        pattern = 'wave';
-      }
-    } else if (this.currentStage === 4) {
-      // Level 4 Lunar Surface: Heavy lunar surface interceptors & snipers
-      const rand = Math.random();
-      if (rand < 0.3) {
-        type = 'interceptor';
-        pattern = 'swoop';
-      } else if (rand < 0.6) {
-        type = 'sniper';
-        pattern = 'zigzag';
-      } else if (rand < 0.85) {
-        type = 'heavy';
-        pattern = 'heavy';
-      } else {
-        type = 'scout';
-        pattern = Math.random() > 0.5 ? 'wave' : 'straight';
-      }
-    } else {
-      // Stage 5: Moon Core Biomechanical Menace (Organic Alien Fleet)
-      const rand = Math.random();
-      if (rand < 0.4) {
-        type = 'bioDrone';
-        pattern = 'bio_spiral';
-      } else if (rand < 0.75) {
-        type = 'bioStalker';
-        pattern = 'bio_hunt';
-      } else {
-        type = 'bioBehemoth';
-        pattern = 'bio_heavy';
+    const cap = Math.round((STAGE_SHIP_CAP[this.currentStage] ?? 8) * capScale) + (this.hardcoreMode ? 4 : 0);
+    let alive = this.pendingSpawns.length;
+    for (const e of this.enemies) {
+      if (e.active && !e.type.startsWith('asteroid') && e.type !== 'turret' && !e.type.startsWith('subboss')) alive++;
+    }
+    if (alive >= cap) return; // wait for the player to thin the field
+
+    const entry = script[this.waveIndex % script.length];
+    this.waveIndex++;
+    for (const spec of expandFormation(entry)) {
+      this.pendingSpawns.push({ delay: spec.delay, spec });
+    }
+    this.waveTimer = entry.gap * (this.hardcoreMode ? 0.65 : 1) * gapScale;
+  }
+
+  private updatePendingSpawns(dt: number, camX: number) {
+    for (let i = this.pendingSpawns.length - 1; i >= 0; i--) {
+      const p = this.pendingSpawns[i];
+      p.delay -= dt;
+      if (p.delay <= 0) {
+        this.spawnFromSpec(p.spec, camX);
+        this.pendingSpawns.splice(i, 1);
       }
     }
-    
-    const enemy = new Enemy(this.scene, type, camX + 450, y, pattern);
-    this.enemies.push(enemy);
+  }
+
+  private spawnFromSpec(spec: SpawnSpec, camX: number) {
+    // Spawn just past the right edge (screen x = +400), or at an explicit
+    // screen x for edge-entry formations like the pincer.
+    const x = spec.screenX !== undefined ? camX + spec.screenX : camX + 450 + spec.dx;
+    const e = new Enemy(this.scene, spec.type, x, spec.y, spec.pattern);
+    if (spec.targetY !== undefined) e.targetY = spec.targetY;
+    if (spec.dir !== undefined) e.peelDir = spec.dir;
+    this.enemies.push(e);
   }
 
   spawnBoss(camX: number) {

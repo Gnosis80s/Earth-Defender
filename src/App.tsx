@@ -21,7 +21,6 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [lives, setLives] = useState(3);
-  const [missileState, setMissileState] = useState({ cooldown: 0, maxCooldown: 5.0 });
   const [weaponLevel, setWeaponLevel] = useState(1);
   const [stage, setStage] = useState(1);
   const [clearedStageNotice, setClearedStageNotice] = useState<number | null>(null);
@@ -31,6 +30,9 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [showReady, setShowReady] = useState(false);
   const [paused, setPaused] = useState(false);
+  // CSS size of the 4:3 playfield, fitted inside the window.
+  const [playfield, setPlayfield] = useState({ w: 800, h: 600 });
+  const gameContainerRef = useRef<HTMLDivElement>(null);
   
   // Customization Options
   const [selectedShip, setSelectedShip] = useState('player');
@@ -98,28 +100,30 @@ export default function App() {
 
     checkTouch();
 
-    const handleResize = () => {
-      checkTouch();
-      const container = document.getElementById('game-container');
-      const canvas = canvasRef.current;
-      if (container && canvas) {
-        const aspect = 800 / 600;
-        let w = container.clientWidth;
-        let h = container.clientHeight;
-        
-        if (w / h > aspect) {
-          w = h * aspect;
-        } else {
-          h = w / aspect;
-        }
-        
-        canvas.style.width = `${w}px`;
-        canvas.style.height = `${h}px`;
-      }
-    };
-
+    const handleResize = () => checkTouch();
     window.addEventListener('resize', handleResize);
-    handleResize();
+
+    // Fit the 4:3 playfield to whatever space the container has. Observing the
+    // container (not the window) also catches the menu bar showing/hiding.
+    const fitPlayfield = () => {
+      const container = gameContainerRef.current;
+      if (!container) return;
+      const aspect = 800 / 600;
+      let w = container.clientWidth;
+      let h = container.clientHeight;
+      if (w / h > aspect) {
+        w = h * aspect;
+      } else {
+        h = w / aspect;
+      }
+      w = Math.floor(w);
+      h = Math.floor(h);
+      setPlayfield((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+      gameRef.current?.resize(w, h);
+    };
+    const observer = new ResizeObserver(fitPlayfield);
+    if (gameContainerRef.current) observer.observe(gameContainerRef.current);
+    fitPlayfield();
 
     // Prevent multi-touch browser gestures, pinch-to-zoom, double-tap zoom, and panning
     const preventDefaultTouch = (e: Event) => {
@@ -138,6 +142,7 @@ export default function App() {
     document.addEventListener('touchmove', preventMultiTouchMove, { passive: false });
 
     return () => {
+      observer.disconnect();
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('gesturestart', preventDefaultTouch);
       window.removeEventListener('gesturechange', preventDefaultTouch);
@@ -226,6 +231,7 @@ export default function App() {
 
     setGameState('playing');
     currentScoreVal.current = 0;
+    currentHighScoreVal.current = Math.max(currentHighScoreVal.current, highScore);
     if (scoreTextRef.current) scoreTextRef.current.textContent = '0'.padStart(9, '0');
     setLives(hardcoreMode ? 1 : 3);
     setStage(startStageNum);
@@ -237,6 +243,7 @@ export default function App() {
       gameRef.current.init(canvasRef.current);
       // Dev-only handle for automated play-testing / debugging from the console.
       if (import.meta.env.DEV) (window as any).__game = gameRef.current;
+      gameRef.current.resize(playfield.w, playfield.h);
     }
     
     if (gameRef.current) {
@@ -302,39 +309,30 @@ export default function App() {
   return (
     <div className="fixed inset-0 bg-[#050505] flex items-center justify-center overflow-hidden font-mono text-white select-none">
       
-      <div className="w-full max-w-[1024px] h-full max-h-[768px] bg-[#050505] overflow-hidden flex flex-col relative shadow-2xl">
+      <div className="w-full h-full bg-[#050505] overflow-hidden flex flex-col relative">
         {/* Scanlines / CRT effect */}
         <div className="absolute inset-0 pointer-events-none z-50" style={{ background: 'repeating-linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), repeating-linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))', backgroundSize: '100% 4px, 3px 100%' }}></div>
         <div className="absolute inset-0 z-40 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] pointer-events-none"></div>
 
-        {/* Top HUD */}
+        {/* Menu bar (hidden during gameplay; the in-game HUD takes over) */}
+        {gameState !== 'playing' && (
         <div className="h-14 bg-black/95 border-b-2 border-cyan-500/30 flex items-center justify-between px-4 sm:px-6 z-30 shrink-0 backdrop-blur-md">
           <div className="flex gap-4 sm:gap-8 items-center">
             <div className="flex flex-col">
               <span className="text-[10px] text-red-400 font-bold tracking-widest leading-none uppercase">1P SCORE</span>
-              <span ref={scoreTextRef} className="text-xl sm:text-2xl font-black tracking-widest text-white italic drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
+              <span className="text-xl sm:text-2xl font-black tracking-widest text-white italic drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
                 {score.toString().padStart(9, '0')}
               </span>
             </div>
             <div className="hidden sm:flex flex-col border-l border-white/10 pl-6">
               <span className="text-[10px] text-amber-400 font-bold tracking-widest leading-none uppercase">HIGH SCORE</span>
-              <span ref={highScoreTextRef} className="text-xl sm:text-2xl font-black tracking-widest text-amber-300 italic drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">
+              <span className="text-xl sm:text-2xl font-black tracking-widest text-amber-300 italic drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">
                 {highScore.toString().padStart(9, '0')}
               </span>
             </div>
           </div>
           
           <div className="flex items-center gap-2.5 sm:gap-4">
-            {gameState === 'playing' && (
-              <button
-                onClick={() => gameRef.current?.togglePause()}
-                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/30 rounded-md text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95"
-                title="Pause (Esc / P)"
-              >
-                <span className="text-sm leading-none">{paused ? '▶' : '❚❚'}</span>
-                <span className="hidden lg:inline uppercase tracking-wider">{paused ? 'Resume' : 'Pause'}</span>
-              </button>
-            )}
             <button 
               onClick={() => { SoundManager.init(); SoundManager.playBloop(); pauseIfPlaying(); setShowAchievementsModal(true); }}
               className="px-3 py-1.5 bg-amber-950/70 hover:bg-amber-900 border border-amber-400/80 rounded-md text-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-[0_0_12px_rgba(251,191,36,0.3)] transition-all cursor-pointer hover:scale-105 active:scale-95"
@@ -362,30 +360,90 @@ export default function App() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Game Canvas Container */}
-        <div id="game-container" className="flex-1 relative overflow-hidden bg-black flex items-center justify-center z-10">
+        <div id="game-container" ref={gameContainerRef} className="flex-1 relative overflow-hidden bg-black flex items-center justify-center z-10">
+          {/* 4:3 playfield. HUD sizes are in em; 1em = 16px at 800x600. */}
+          <div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
+            style={{ width: playfield.w, height: playfield.h, fontSize: `${(playfield.w / 800) * 16}px` }}
+          >
           <canvas 
             ref={canvasRef} 
             width={800} 
             height={600} 
-            className="block relative z-10"
-            style={{ 
-              imageRendering: 'pixelated'
-            }}
+            className="block w-full h-full relative z-10"
           />
+
+          {/* In-game arcade HUD */}
+          {gameState === 'playing' && (
+            <div className="absolute inset-0 z-20 pointer-events-none font-mono" style={{ textShadow: '0 0.12em 0 #000, 0 0 0.5em rgba(0,0,0,0.9)' }}>
+              <div className="absolute top-0 inset-x-0 flex items-start justify-between px-[0.9em] pt-[0.5em]">
+                <div className="flex flex-col leading-none">
+                  <span className="text-[0.6em] font-black tracking-[0.2em] text-red-400">1P</span>
+                  <span ref={scoreTextRef} className="text-[1.25em] font-black tracking-widest text-white">
+                    {currentScoreVal.current.toString().padStart(9, '0')}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center leading-none">
+                  <span className="text-[0.6em] font-black tracking-[0.2em] text-amber-400">HI-SCORE</span>
+                  <span ref={highScoreTextRef} className="text-[1.25em] font-black tracking-widest text-amber-300">
+                    {Math.max(highScore, currentHighScoreVal.current).toString().padStart(9, '0')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-[0.6em]">
+                  <div className="flex flex-col items-end leading-none gap-[0.25em]">
+                    <span className="text-[0.6em] font-black tracking-[0.2em] text-cyan-300">STAGE {stage}</span>
+                    <div className="flex gap-[0.25em]">
+                      {[...Array(Math.max(lives, 0))].map((_, i) => (
+                        <span key={`life-${i}`} className="text-[0.85em] text-emerald-400 leading-none">▶</span>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => gameRef.current?.togglePause()}
+                    className="pointer-events-auto text-[0.75em] px-[0.6em] py-[0.3em] bg-black/50 hover:bg-white/15 border border-white/30 rounded text-white cursor-pointer"
+                    title="Pause (Esc / P)"
+                  >
+                    {paused ? '▶' : '❚❚'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="absolute bottom-0 inset-x-0 flex items-end justify-between px-[0.9em] pb-[0.6em]">
+                <div className="flex flex-col leading-none gap-[0.3em]">
+                  <span className="text-[0.6em] font-black tracking-[0.2em] text-sky-300">PLASMA LV{weaponLevel}{weaponLevel === 3 ? ' MAX' : ''}</span>
+                  <div className="flex gap-[0.2em]">
+                    {[1, 2, 3].map((n) => (
+                      <span key={`wpn-${n}`} className={`block w-[1.4em] h-[0.4em] rounded-[0.1em] ${n <= weaponLevel ? 'bg-sky-400 shadow-[0_0_0.4em_#38bdf8]' : 'bg-white/15'}`} />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end leading-none gap-[0.3em] w-[11em]">
+                  <div className="flex justify-between w-full text-[0.6em] font-black tracking-[0.15em]">
+                    <span className="text-amber-400">MSL x{gameRef.current?.player?.missileCount || 4}{(gameRef.current?.player?.missileLevel ?? 1) >= 2 ? ' SUPER' : ''}</span>
+                    <span ref={missileLabelRef} className="text-green-400">READY [CTRL]</span>
+                  </div>
+                  <div className="h-[0.45em] w-full bg-black/60 border border-white/20 rounded-[0.1em] overflow-hidden">
+                    <div ref={missileBarRef} className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400" style={{ width: '100%' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Ready Overlay */}
           {gameState === 'playing' && (
             <div 
               className={`absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none transition-all duration-1000 ${showReady ? 'opacity-100 bg-black/80 backdrop-blur-sm' : 'opacity-0 bg-transparent backdrop-blur-none'}`}
             >
-              {showReady && <h1 className="text-8xl sm:text-9xl font-black italic text-cyan-400 tracking-[0.2em] drop-shadow-[0_0_30px_rgba(0,255,255,1)] animate-pulse">READY</h1>}
+              {showReady && <h1 className="text-[6em] font-black italic text-cyan-400 tracking-[0.2em] drop-shadow-[0_0_30px_rgba(0,255,255,1)] animate-pulse">READY</h1>}
             </div>
           )}
 
           {gameState === 'playing' && bossData && bossData.active && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[88%] max-w-[500px] z-30 bg-black/85 border-2 border-red-600/90 p-2.5 rounded shadow-[0_0_25px_rgba(255,0,0,0.6)] backdrop-blur-xs">
+            <div className="absolute top-[3.2em] left-1/2 -translate-x-1/2 w-[62%] z-30 bg-black/85 border-2 border-red-600/90 p-2.5 rounded shadow-[0_0_25px_rgba(255,0,0,0.6)] backdrop-blur-xs">
               <div className="flex justify-between items-center mb-1 text-xs font-black tracking-widest">
                 <span className="text-red-400 animate-pulse flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
@@ -415,7 +473,7 @@ export default function App() {
 
           {/* Asteroid Warning Overlay */}
           {gameState === 'playing' && asteroidWarning && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[88%] max-w-[520px] bg-amber-950/95 border-2 border-amber-500 p-3 rounded-lg shadow-[0_0_35px_rgba(245,158,11,0.8)] text-center animate-pulse backdrop-blur-xs">
+            <div className="absolute top-[3.2em] left-1/2 -translate-x-1/2 z-30 w-[66%] bg-amber-950/95 border-2 border-amber-500 p-3 rounded-lg shadow-[0_0_35px_rgba(245,158,11,0.8)] text-center animate-pulse backdrop-blur-xs">
               <div className="flex items-center justify-center gap-2 text-amber-400 font-black text-xs sm:text-sm tracking-widest uppercase">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
                 <span>⚠️ WARNING: ASTEROID FIELD AHEAD ⚠️</span>
@@ -429,7 +487,7 @@ export default function App() {
 
           {/* Missile Defence Warning Overlay */}
           {gameState === 'playing' && missileWarning && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[88%] max-w-[520px] bg-red-950/95 border-2 border-red-500 p-3 rounded-lg shadow-[0_0_35px_rgba(239,68,68,0.9)] text-center animate-pulse backdrop-blur-xs">
+            <div className="absolute top-[3.2em] left-1/2 -translate-x-1/2 z-30 w-[66%] bg-red-950/95 border-2 border-red-500 p-3 rounded-lg shadow-[0_0_35px_rgba(239,68,68,0.9)] text-center animate-pulse backdrop-blur-xs">
               <div className="flex items-center justify-center gap-2 text-red-400 font-black text-xs sm:text-sm tracking-widest uppercase">
                 <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-ping"></span>
                 <span>⚠️ WARNING: MISSILE DEFENCE AHEAD ⚠️</span>
@@ -458,6 +516,7 @@ export default function App() {
               </div>
             </div>
           )}
+          </div>
 
           {/* Menus */}
           {gameState === 'menu' && (
@@ -1054,53 +1113,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Bottom HUD */}
-        <div className="h-20 bg-black border-t-2 border-[#333] flex items-center px-6 z-30 gap-6 shrink-0">
-          <div className="hidden sm:flex flex-col w-44">
-            <div className="flex justify-between text-[10px] text-[#00d4ff] mb-1 font-bold">
-              <span>WEAPON: PLASMA BEAM</span>
-              <span>LV. 0{weaponLevel} {weaponLevel === 3 ? '(MAX)' : ''}</span>
-            </div>
-            <div className="h-3 w-full bg-[#111] border border-[#333] rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-[#0055ff] to-[#00d4ff] shadow-[0_0_10px_#00d4ff] transition-all duration-300"
-                style={{ width: `${(weaponLevel / 3) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-          
-          {/* Missile Status Bar in HUD */}
-          <div className="flex-1 max-w-[280px] flex flex-col">
-            <div className="flex justify-between text-[10px] font-bold mb-1">
-              <span className="text-amber-400 tracking-wider">
-                MISSILES (x{gameRef.current?.player?.missileCount || 4}){gameRef.current?.player?.missileLevel && gameRef.current.player.missileLevel >= 2 ? ' [SUPER]' : ''}
-              </span>
-              <span ref={missileLabelRef} className={missileState.cooldown > 0 ? "text-red-400 animate-pulse font-black" : "text-green-400 font-black animate-pulse tracking-widest"}>
-                {missileState.cooldown > 0 ? `RELOADING (${missileState.cooldown.toFixed(1)}s)` : 'READY [CTRL]'}
-              </span>
-            </div>
-            <div className="h-3.5 w-full bg-[#111] border border-[#444] rounded overflow-hidden relative shadow-inner">
-              <div 
-                ref={missileBarRef}
-                className={`h-full ${
-                  missileState.cooldown > 0
-                    ? 'bg-gradient-to-r from-red-800 to-orange-500 shadow-[0_0_8px_#ff4400]'
-                    : 'bg-gradient-to-r from-emerald-500 to-cyan-400 shadow-[0_0_12px_#00ffcc] animate-pulse'
-                }`}
-                style={{
-                  width: `${Math.min(100, Math.max(0, ((missileState.maxCooldown - missileState.cooldown) / missileState.maxCooldown) * 100))}%`
-                }}
-              ></div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-4 ml-auto">
-            <div className="hidden md:flex flex-col items-end text-[11px] text-gray-400">
-              <span className="font-bold text-cyan-400">STARFIGHTER OS v2.4</span>
-              <span>SYSTEMS NOMINAL</span>
-            </div>
-          </div>
-        </div>
 
       </div>
     </div>
