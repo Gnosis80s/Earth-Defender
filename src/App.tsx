@@ -29,7 +29,7 @@ export default function App() {
   const [stage, setStage] = useState(1);
   const [clearedStageNotice, setClearedStageNotice] = useState<number | null>(null);
   const [bossData, setBossData] = useState<{ active: boolean; hp: number; maxHp: number; name: string; isExploding: boolean } | null>(null);
-  const [asteroidWarning, setAsteroidWarning] = useState<'field' | 'storm' | null>(null);
+  const [asteroidWarning, setAsteroidWarning] = useState<'field' | 'storm' | 'mines' | null>(null);
   const [missileWarning, setMissileWarning] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showReady, setShowReady] = useState(false);
@@ -394,6 +394,9 @@ export default function App() {
           {/* Asteroid Warning Overlay */}
           {gameState === 'playing' && asteroidWarning === 'field' && (
             <WarningBanner tone="amber" title="ASTEROID FIELD" sub="HEAVY ROCK AHEAD - SHOOT OR DODGE" />
+          )}
+          {gameState === 'playing' && asteroidWarning === 'mines' && (
+            <WarningBanner tone="red" title="MINEFIELD" sub="PROXIMITY MINES - SHOOT THEM FROM RANGE" />
           )}
           {gameState === 'playing' && asteroidWarning === 'storm' && (
             <WarningBanner tone="amber" title="METEOR STORM" sub="ROCKS INCOMING FROM ABOVE" low />

@@ -25,14 +25,14 @@ import {
  * clouds, a day/night terminator with city lights, ocean sun-glint and an
  * atmospheric rim. `size` is the texture (and on-screen) size in texels.
  */
-export function drawEarth(size = 192, opts: { yaw?: number; seaLevel?: number } = {}): HTMLCanvasElement {
+export function drawEarth(size = 192, opts: { yaw?: number; seaLevel?: number; light?: [number, number, number] } = {}): HTMLCanvasElement {
   const { canvas, ctx, img } = newCanvas(size, size);
   const d = img.data;
   const c = size / 2;
   const R = size / 2 - 9; // leave room for the atmospheric halo
 
   // Sun: upper-left and toward the viewer -> a gibbous Earth with a night crescent on the right.
-  const L = normalize3([-0.62, 0.38, 0.69]);
+  const L = normalize3(opts.light ?? [-0.62, 0.38, 0.69]);
   const H = normalize3([L[0], L[1], L[2] + 1]); // Blinn half-vector (viewer at +z)
 
   const tilt = 0.41; // axial tilt, radians

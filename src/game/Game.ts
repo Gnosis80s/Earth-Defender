@@ -87,7 +87,7 @@ export class Game {
   onStageUpdate: (stage: number) => void = () => {};
   onStageClear: (clearedStage: number) => void = () => {};
   onBossHpUpdate: (bossData: { active: boolean; hp: number; maxHp: number; name: string; isExploding: boolean } | null) => void = () => {};
-  onAsteroidWarningUpdate: (warning: 'field' | 'storm' | null) => void = () => {};
+  onAsteroidWarningUpdate: (warning: 'field' | 'storm' | 'mines' | null) => void = () => {};
   onMissileWarningUpdate: (active: boolean) => void = () => {};
   onGameOver: (victory: boolean) => void = () => {};
   onReadyChange: (showing: boolean) => void = () => {};
@@ -258,6 +258,7 @@ export class Game {
     this.bullets = new BulletManager(this.scene);
     this.particles = new ParticleManager(this.scene);
     this.level = new Level(this.scene, this.camera);
+    this.level.moon.ensureMap(this.renderer); // one-time GPU bake of the Moon's surface
     this.level.onAsteroidWarningUpdate = (active, kind = 'field') => this.onAsteroidWarningUpdate(active ? kind : null);
     this.level.onMissileWarningUpdate = (active) => this.onMissileWarningUpdate(active);
     this.player = new Player(this.scene);
@@ -799,7 +800,7 @@ export class Game {
 
     if (boss.hullHit(pos, radius)) {
       const k = boss.weakSpotScale(pos);
-      boss.takeDamage(damage * k);
+      if (k > 0) boss.takeDamage(damage * k);
       if (k > 1) {
         // Weak spot: hot pink burst.
         this.particles.spawnExplosion(pos.x, pos.y, 0xff3a5a, fx.bodyCount + 6);
@@ -910,7 +911,8 @@ export class Game {
       }
 
       const boss = this.level.boss;
-      if (boss && boss.active && !boss.isExploding && boss.hullHit(this.player.mesh.position, 12)) {
+      if (boss && boss.active && !boss.isExploding &&
+          (boss.hullHit(this.player.mesh.position, 12) || boss.hazardHit(this.player.mesh.position, 6))) {
          this.takePlayerDamage();
       }
     }

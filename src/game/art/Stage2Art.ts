@@ -388,63 +388,6 @@ export function drawSpaceNebula(): HTMLCanvasElement {
 }
 
 // ---------------------------------------------------------------------------
-// The Moon (destination), lit by the same sun
-// ---------------------------------------------------------------------------
-
-export function drawDistantMoon(size = 112): HTMLCanvasElement {
-  const { canvas, ctx, img } = newCanvas(size, size);
-  const c = size / 2, R = size / 2 - 4;
-  const ramp: RGB[] = ['#07080e', '#191a24', '#2e2f3a', '#4a4b56', '#6c6c76', '#918f96', '#b7b4b6', '#dcd8d2'].map(hex);
-  const rnd = rng(909);
-  const craters: { c: V3; r: number }[] = [];
-  for (let k = 0; k < 40; k++) {
-    const u = rnd() * 2 - 1, t = rnd() * Math.PI * 2, s = Math.sqrt(1 - u * u);
-    craters.push({ c: [s * Math.cos(t), u, s * Math.sin(t)], r: 0.03 + Math.pow(rnd(), 2.5) * 0.16 });
-  }
-  for (let j = 0; j < size; j++) {
-    for (let i = 0; i < size; i++) {
-      const x = (i + 0.5 - c) / R, y = -(j + 0.5 - c) / R;
-      const r2 = x * x + y * y;
-      if (r2 > 1) {
-        // Thin cool rim glow on the sunlit limb only.
-        const r = Math.sqrt(r2), t = (r - 1) * R;
-        if (t < 3) {
-          const lit = clamp01((x / r) * SUN[0] + (y / r) * SUN[1]);
-          const a = (1 - t / 3) * lit;
-          if (a > bayer(i, j)) put(img.data, size, i, j, hex('#8aa0c8'), 110);
-        }
-        continue;
-      }
-      const z = Math.sqrt(1 - r2);
-      const p: V3 = [x, y, z];
-      // Maria: dark basalt plains.
-      const mar = fbm3(x * 1.8 + 4, y * 1.8, z * 1.8, 4, 61);
-      let alb = mar > 0.53 ? 0.62 : 0.95 + (fbm3(x * 6, y * 6, z * 6, 3, 62) - 0.5) * 0.25;
-      // Craters: bowl normal perturbation + bright rims.
-      let n: V3 = p;
-      for (const k of craters) {
-        const ang = Math.acos(Math.max(-1, Math.min(1, dot(p, k.c))));
-        const q = ang / k.r;
-        if (q < 1.25) {
-          const tdir = norm([p[0] - k.c[0], p[1] - k.c[1], p[2] - k.c[2]]);
-          const slope = q < 1 ? -0.55 * q : 0.6 * (1.25 - q) * 4;
-          n = norm([n[0] + tdir[0] * slope * 0.5, n[1] + tdir[1] * slope * 0.5, n[2] + tdir[2] * slope * 0.5]);
-          if (q > 0.85 && q < 1.15) alb += 0.12;
-        }
-      }
-      const diff = clamp01(dot(n, SUN));
-      const v = (0.04 + 0.96 * Math.pow(diff, 0.8)) * alb;
-      let col = rampDither(ramp, v, i, j);
-      // Faint earthshine on the night side.
-      if (diff <= 0.02) col = mix(col, hex('#1b2236'), 0.5);
-      put(img.data, size, i, j, col);
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return canvas;
-}
-
-// ---------------------------------------------------------------------------
 // Belt layers
 // ---------------------------------------------------------------------------
 

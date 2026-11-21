@@ -5,9 +5,10 @@ import {
 } from './art/Stage1Art';
 import { drawPadDeck, drawServiceArm, drawControlTower, drawFuelCompound } from './art/LaunchpadArt';
 import {
-  drawSpaceNebula, drawDistantMoon, drawBeltFar, drawBeltMid, drawRockFrame, drawFortress, drawFortressShutter,
+  drawSpaceNebula, drawBeltFar, drawBeltMid, drawRockFrame, drawFortress, drawFortressShutter,
   drawFortressCore, drawCoreGlow, drawFortressTurret, ROCK_FRAMES, RockKind, rockVariantCount,
 } from './art/Stage2Art';
+import { drawSunGlare, drawOrbitalWreckage, drawMine, drawDockHub, drawDockWing, drawDockNode, drawLensGlow } from './art/Stage3Art';
 
 /** Every asteroid tumble frame, as texture names (`rock_<kind>_<variant>_<frame>`). */
 const ROCK_FRAME_NAMES: string[] = (['large', 'small', 'chunk', 'gold'] as RockKind[]).flatMap((k) =>
@@ -30,6 +31,7 @@ export class AssetManager {
     'night_sky', 'bg_mountains', 'bg_city_far', 'bg_city', 'night_clouds', 'moon_halo', 'searchlight_beam',
     'launchpad_deck', 'launchpad_tower', 'launchpad_fuel', 'launchpad_arm_left', 'launchpad_arm_right',
     ...AssetManager.STAGE2_TEXTURES,
+    ...AssetManager.STAGE3_TEXTURES,
     'bg_lunar_far', 'bg_lunar', 'earth',
   ]) {
     this.ensureRegistered();
@@ -52,9 +54,15 @@ export class AssetManager {
 
   /** Everything Stage 2 draws (backdrop, boss, every asteroid frame). */
   static readonly STAGE2_TEXTURES: string[] = [
-    'space_nebula', 'moon_distant', 'belt_far', 'belt_mid',
+    'space_nebula', 'belt_far', 'belt_mid',
     'boss2', 'boss2_turret', 'boss2_core', 'boss2_core_glow', 'boss2_shutter_top', 'boss2_shutter_bottom', 'boss2_damaged',
     ...ROCK_FRAME_NAMES,
+  ];
+
+  /** Everything Stage 3 draws (the Moon itself is a shader; see MoonShader.ts). */
+  static readonly STAGE3_TEXTURES: string[] = [
+    'sun_glare', 'orbital_wreck', 'earth_far', 'solar_mine', 'solar_mine_armed',
+    'boss3', 'boss3_damaged', 'boss3_wing_top', 'boss3_wing_bottom', 'boss3_node', 'boss3_lens_glow',
   ];
 
   /** Generate anything in `names` not made yet (synchronous). */
@@ -112,14 +120,23 @@ export class AssetManager {
     this.generators['boss2_shutter_top'] = () => this.createTextureFromCanvas(drawFortressShutter(false));
     this.generators['boss2_shutter_bottom'] = () => this.createTextureFromCanvas(drawFortressShutter(true));
     this.generators['space_nebula'] = () => this.createTextureFromCanvas(drawSpaceNebula());
-    this.generators['moon_distant'] = () => this.createTextureFromCanvas(drawDistantMoon(112));
     this.generators['belt_far'] = () => this.createTextureFromCanvas(drawBeltFar());
     this.generators['belt_mid'] = () => this.createTextureFromCanvas(drawBeltMid());
     for (const name of ROCK_FRAME_NAMES) {
       const [, kind, v, f] = name.split('_');
       this.generators[name] = () => this.createTextureFromCanvas(drawRockFrame(kind as RockKind, +v, +f));
     }
-    this.generators['boss3'] = () => this.generateBossTexture(3);
+    this.generators['boss3'] = () => this.createTextureFromCanvas(drawDockHub(false));
+    this.generators['boss3_damaged'] = () => this.createTextureFromCanvas(drawDockHub(true));
+    this.generators['boss3_wing_top'] = () => this.createTextureFromCanvas(drawDockWing(false));
+    this.generators['boss3_wing_bottom'] = () => this.createTextureFromCanvas(drawDockWing(true));
+    this.generators['boss3_node'] = () => this.createTextureFromCanvas(drawDockNode());
+    this.generators['boss3_lens_glow'] = () => this.createTextureFromCanvas(drawLensGlow());
+    this.generators['sun_glare'] = () => this.createTextureFromCanvas(drawSunGlare());
+    this.generators['orbital_wreck'] = () => this.createTextureFromCanvas(drawOrbitalWreckage());
+    // Earth seen from lunar orbit, far behind us, lit by the same sun as the Moon.
+    this.generators['earth_far'] = () => this.createTextureFromCanvas(drawEarth(64, { light: [0.86, 0.32, 0.4] }));
+    this.generators['solar_mine_armed'] = () => this.createTextureFromCanvas(drawMine(true));
     this.generators['boss4'] = () => this.generateBossTexture(4);
     this.generators['boss5'] = () => this.generateBossTexture(5);
     this.generators['enemyBioDrone'] = () => this.generateEnemyBioDroneTexture();
@@ -135,12 +152,11 @@ export class AssetManager {
     this.generators['missile'] = () => this.generateMissileTexture();
     this.generators['missile_upgraded'] = () => this.generateMissileUpgradedTexture();
     this.generators['star'] = () => this.generateStar();
-    this.generators['moon'] = () => this.generateMoon();
     this.generators['earth'] = () => this.createTextureFromCanvas(drawEarth(192));
     this.generators['bg_lunar'] = () => this.createTextureFromCanvas(drawLunarNear());
     this.generators['bg_lunar_far'] = () => this.createTextureFromCanvas(drawLunarFar());
     this.generators['bg_solar_dock'] = () => this.generateSolarDockBackground();
-    this.generators['solar_mine'] = () => this.generateSolarMineTexture();
+    this.generators['solar_mine'] = () => this.createTextureFromCanvas(drawMine(false));
     this.generators['bg_cavern_far'] = () => this.generateCavernFarLandscape();
     this.generators['bg_cavern'] = () => this.generateCavernLandscape();
     this.generators['bg_cavern_entry'] = () => this.generateCavernEntryLandscape();
@@ -3542,237 +3558,6 @@ export class AssetManager {
     return this.createTextureFromCanvas(canvas);
   }
 
-  private static generateMoon() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d')!;
-    
-    const size = 256;
-    const center = 128;
-    const radius = 118;
-    const px = 2; // 2px pixel blocks for high-detail 16-bit arcade pixel art
-
-    // Major Craters List [cx, cy, r, hasRaySystem, hasCentralPeak, isDarkFloor]
-    const majorCraters = [
-      { cx: 24, cy: 56, r: 20, ray: true, peak: true, darkFloor: false },    // Tycho (South)
-      { cx: -52, cy: -18, r: 24, ray: true, peak: true, darkFloor: false },  // Copernicus (West)
-      { cx: -78, cy: -28, r: 14, ray: true, peak: false, darkFloor: false }, // Kepler
-      { cx: -18, cy: -72, r: 18, ray: false, peak: false, darkFloor: true }, // Plato (Dark Basalt Floor)
-      { cx: -62, cy: -46, r: 12, ray: true, peak: true, darkFloor: false },  // Aristarchus (Hotspot)
-      { cx: 68, cy: -22, r: 22, ray: false, peak: false, darkFloor: true },  // Mare Crisium (Isolated)
-      { cx: 38, cy: 12, r: 16, ray: false, peak: true, darkFloor: false },   // Theophilus
-      { cx: -28, cy: 22, r: 18, ray: false, peak: false, darkFloor: false },  // Ptolemaeus
-      { cx: 72, cy: 42, r: 15, ray: false, peak: false, darkFloor: false },   // Petavius
-      { cx: -90, cy: 18, r: 16, ray: false, peak: false, darkFloor: true },   // Grimaldi
-    ];
-
-    // Minor Craters
-    const minorCraters = [
-      { cx: -35, cy: -55, r: 9 }, { cx: 10, cy: -40, r: 10 }, { cx: 45, cy: -50, r: 8 },
-      { cx: -10, cy: -15, r: 11 }, { cx: 5, cy: 20, r: 9 }, { cx: -45, cy: 45, r: 12 },
-      { cx: -15, cy: 75, r: 14 }, { cx: 40, cy: 65, r: 10 }, { cx: 80, cy: 10, r: 9 },
-      { cx: -70, cy: 50, r: 11 }, { cx: 15, cy: -85, r: 8 }, { cx: -55, cy: -75, r: 10 },
-      { cx: 55, cy: -70, r: 9 }, { cx: -85, cy: -55, r: 7 }, { cx: 85, cy: -45, r: 8 }
-    ];
-
-    // Color Palette Bands (Lightest to Darkest)
-    const palette = [
-      '#ffffff', // 0: Pure Highlight (Peaks & Rims)
-      '#f1f5f9', // 1: Lit Ice Silver
-      '#e2e8f0', // 2: Light Highland Slate
-      '#cbd5e1', // 3: Mid Highland Gray
-      '#94a3b8', // 4: Deep Highland / Light Mare
-      '#64748b', // 5: Mare Transition Slate
-      '#475569', // 6: Mare Basalt Gray
-      '#334155', // 7: Dark Mare Basalt
-      '#1e293b', // 8: Deep Shadow Basalt
-      '#0f172a', // 9: Nightside Terminator Shadow
-      '#030712'  // 10: Pure Nightside Black
-    ];
-
-    // Light source vector (top-left, slightly front)
-    const lx = -0.55;
-    const ly = -0.55;
-    const lz = 0.62;
-
-    for (let y = 0; y < size; y += px) {
-      for (let x = 0; x < size; x += px) {
-        const dx = (x + px/2) - center;
-        const dy = (y + px/2) - center;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-
-        if (dist <= radius) {
-          // 3D Sphere Normal
-          const z = Math.sqrt(radius * radius - dx * dx - dy * dy);
-          const nx = dx / radius;
-          const ny = dy / radius;
-          const nz = z / radius;
-
-          // Lambertian Illumination Dot Product
-          const NdotL = nx * lx + ny * ly + nz * lz;
-
-          // Base surface noise for Lunar Maria & Highlands
-          const n1 = Math.sin(dx * 0.035) * Math.cos(dy * 0.035);
-          const n2 = Math.sin((dx * 0.07 + 1.2) * (dy * 0.05 - 0.8));
-          const n3 = Math.cos(dx * 0.12 - dy * 0.09);
-          const noise = n1 * 0.5 + n2 * 0.35 + n3 * 0.15;
-
-          // Maria Probability Distribution
-          let isMare = false;
-          let mareIntensity = 0;
-
-          // Oceanus Procellarum & Mare Imbrium (Left / Upper-Left)
-          const distProcellarum = Math.sqrt((dx + 45)*(dx + 45) + (dy + 15)*(dy + 15));
-          if (distProcellarum < 75) {
-            isMare = true;
-            mareIntensity = Math.max(mareIntensity, (1 - distProcellarum / 75) * 0.8);
-          }
-
-          // Mare Tranquillitatis & Serenitatis (Top Right)
-          const distTranquil = Math.sqrt((dx - 35)*(dx - 35) + (dy + 35)*(dy + 35));
-          if (distTranquil < 55) {
-            isMare = true;
-            mareIntensity = Math.max(mareIntensity, (1 - distTranquil / 55) * 0.75);
-          }
-
-          // Mare Nubium (Lower Center-Left)
-          const distNubium = Math.sqrt((dx + 15)*(dx + 15) + (dy - 35)*(dy - 35));
-          if (distNubium < 45) {
-            isMare = true;
-            mareIntensity = Math.max(mareIntensity, (1 - distNubium / 45) * 0.7);
-          }
-
-          // Mare Crisium (Isolated East)
-          const distCrisium = Math.sqrt((dx - 68)*(dx - 68) + (dy + 22)*(dy + 22));
-          if (distCrisium < 22) {
-            isMare = true;
-            mareIntensity = Math.max(mareIntensity, (1 - distCrisium / 22) * 0.9);
-          }
-
-          if (noise > 0.25) {
-            isMare = true;
-            mareIntensity = Math.max(mareIntensity, (noise - 0.25) * 0.6);
-          }
-
-          // Tycho & Copernicus Ejecta Ray System
-          let rayHighlight = 0;
-          // Tycho Rays
-          const tychoDx = dx - 24;
-          const tychoDy = dy - 56;
-          const tychoDist = Math.sqrt(tychoDx*tychoDx + tychoDy*tychoDy);
-          if (tychoDist > 20 && tychoDist < 110) {
-            const angle = Math.atan2(tychoDy, tychoDx);
-            const rayPattern = Math.abs(Math.sin(angle * 8));
-            if (rayPattern > 0.88) {
-              rayHighlight += (rayPattern - 0.88) * 6 * (1 - tychoDist / 110);
-            }
-          }
-
-          // Copernicus Rays
-          const copDx = dx + 52;
-          const copDy = dy + 18;
-          const copDist = Math.sqrt(copDx*copDx + copDy*copDy);
-          if (copDist > 24 && copDist < 80) {
-            const angle = Math.atan2(copDy, copDx);
-            const rayPattern = Math.abs(Math.sin(angle * 6 + 0.4));
-            if (rayPattern > 0.85) {
-              rayHighlight += (rayPattern - 0.85) * 5 * (1 - copDist / 80);
-            }
-          }
-
-          // Calculate Shading Level (0 to 10)
-          let val = NdotL * 0.5 + 0.5; // 0 to 1
-
-          if (isMare) {
-            val -= mareIntensity * 0.32;
-          } else {
-            val += 0.08; // Highlands are brighter
-          }
-
-          val += rayHighlight * 0.15;
-
-          // Crater Modifications
-          let craterOffset = 0;
-
-          // Check Major Craters
-          for (const crater of majorCraters) {
-            const cdx = dx - crater.cx;
-            const cdy = dy - crater.cy;
-            const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
-
-            if (cdist <= crater.r) {
-              if (cdist >= crater.r - 3) {
-                // Rim Wall
-                const rimAngle = cdx * lx + cdy * ly;
-                if (rimAngle < 0) {
-                  craterOffset += 0.35; // Lit rim wall
-                } else {
-                  craterOffset -= 0.30; // Shadowed rim wall
-                }
-              } else {
-                // Interior Floor
-                if (crater.darkFloor) {
-                  craterOffset -= 0.35;
-                } else {
-                  const intAngle = cdx * lx + cdy * ly;
-                  if (intAngle > 0) {
-                    craterOffset -= 0.22; // Interior rim shadow
-                  } else {
-                    craterOffset += 0.05;
-                  }
-                  if (crater.peak && cdist < 3) {
-                    craterOffset += 0.40; // Central peak highlight
-                  }
-                }
-              }
-            }
-          }
-
-          // Check Minor Craters
-          for (const crater of minorCraters) {
-            const cdx = dx - crater.cx;
-            const cdy = dy - crater.cy;
-            const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
-
-            if (cdist <= crater.r) {
-              if (cdist >= crater.r - 2) {
-                const rimAngle = cdx * lx + cdy * ly;
-                craterOffset += (rimAngle < 0) ? 0.22 : -0.20;
-              } else {
-                craterOffset -= 0.15;
-              }
-            }
-          }
-
-          val += craterOffset;
-
-          // Map val (range ~ -0.3 to 1.3) into discrete palette index 0 to 10
-          let paletteIndex = Math.floor((1 - val) * 9);
-          paletteIndex = Math.max(0, Math.min(10, paletteIndex));
-
-          // Apply 2x2 Checkerboard Dithering on index transitions for retro 16-bit aesthetic
-          const fraction = ((1 - val) * 9) - paletteIndex;
-          const dither = ((x / px + y / px) % 2 === 0);
-          if (fraction > 0.65 && dither && paletteIndex < 10) {
-            paletteIndex += 1;
-          }
-
-          // Edge Limb Atmosphere Glow (Lit edge)
-          if (dist >= radius - 3 && NdotL > 0.1) {
-            ctx.fillStyle = '#e0f2fe'; // Crisp atmospheric rim
-          } else {
-            ctx.fillStyle = palette[paletteIndex];
-          }
-
-          ctx.fillRect(x, y, px, px);
-        }
-      }
-    }
-
-    return this.createTextureFromCanvas(canvas);
-  }
-
   private static generateBlastDoorTop() {
     const canvas = document.createElement('canvas');
     canvas.width = 120;
@@ -4205,89 +3990,6 @@ export class AssetManager {
     ctx.strokeRect(430, 172, 50, 16);
     ctx.fillStyle = '#06b6d4';
     ctx.beginPath(); ctx.arc(400, 180, 8, 0, Math.PI * 2); ctx.fill();
-
-    return this.createTextureFromCanvas(canvas);
-  }
-
-  private static generateSolarMineTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 48;
-    canvas.height = 48;
-    const ctx = canvas.getContext('2d')!;
-
-    // 16-Bit Proximity Space Navigational Mine
-    // 1. Dark Silhouette & Hazard Spikes
-    ctx.fillStyle = '#020617';
-    ctx.beginPath();
-    ctx.arc(24, 24, 16, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 8 Faceted Proximity Sensor Spikes
-    for (let i = 0; i < 8; i++) {
-      const a = (i * Math.PI) / 4;
-      const xTip = 24 + Math.cos(a) * 23;
-      const yTip = 24 + Math.sin(a) * 23;
-      const xL = 24 + Math.cos(a - 0.25) * 14;
-      const yL = 24 + Math.sin(a - 0.25) * 14;
-      const xR = 24 + Math.cos(a + 0.25) * 14;
-      const yR = 24 + Math.sin(a + 0.25) * 14;
-
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.moveTo(xTip, yTip);
-      ctx.lineTo(xL, yL);
-      ctx.lineTo(xR, yR);
-      ctx.closePath();
-      ctx.fill();
-
-      // Spike core energy needle
-      ctx.strokeStyle = '#00f0ff';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(24 + Math.cos(a) * 12, 24 + Math.sin(a) * 12);
-      ctx.lineTo(xTip, yTip);
-      ctx.stroke();
-
-      // Glowing tip diode
-      ctx.fillStyle = '#f43f5e';
-      ctx.fillRect(xTip - 1.5, yTip - 1.5, 3, 3);
-    }
-
-    // 2. Heavy Armored Spherical Hull (Gunmetal Steel)
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.arc(24, 24, 14, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#334155';
-    ctx.beginPath();
-    ctx.arc(22, 22, 12, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3. Glowing Amber Warning Ring
-    ctx.fillStyle = '#b45309';
-    ctx.beginPath();
-    ctx.arc(24, 24, 9, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#f59e0b';
-    ctx.beginPath();
-    ctx.arc(24, 24, 7, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 4. Central Optical Sensor Lens
-    ctx.fillStyle = '#0284c7';
-    ctx.beginPath();
-    ctx.arc(24, 24, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#00ffff';
-    ctx.beginPath();
-    ctx.arc(23, 23, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(22, 22, 2, 2);
 
     return this.createTextureFromCanvas(canvas);
   }

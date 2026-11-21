@@ -36,6 +36,11 @@ export class Enemy extends Entity {
   private rockFrame = -1;
   driftVx = 0;
   driftVy = 0;
+
+  // Proximity mines: arm when the player comes close, then burst.
+  private mineArmed = false;
+  private mineFuse = 0;
+  static readonly MINE_TRIGGER = 88;
   targetTurretAngle: number = Math.PI;
 
   constructor(scene: THREE.Scene, type: string, x: number, y: number, pattern: string) {
@@ -85,8 +90,8 @@ export class Enemy extends Entity {
       hp = 18;
     } else if (type === 'solar_mine') {
       texName = 'solar_mine';
-      size = 48;
-      hp = 8;
+      size = 36;
+      hp = 3;
     } else if (type === 'bioDrone') {
       texName = 'enemyBioDrone';
       size = 36;
@@ -124,6 +129,11 @@ export class Enemy extends Entity {
       this.driftVx = -(base + Math.random() * 50);
       this.driftVy = (Math.random() - 0.5) * 30;
       this.updateRockFrame();
+    }
+    if (type === 'solar_mine') {
+      this.radius = 13;
+      this.driftVx = -(60 + Math.random() * 40);
+      this.driftVy = 0;
     }
 
     if (type === 'turret') {
@@ -253,11 +263,33 @@ export class Enemy extends Entity {
     this.timer += dt;
 
     if (this.type === 'solar_mine') {
-      this.mesh.rotation.z += 1.8 * dt;
-      this.vx = -70;
-      this.vy = Math.sin(this.timer * 1.5) * 35;
-      if (particles && Math.random() < 0.25) {
-        particles.spawnExplosion(this.mesh.position.x, this.mesh.position.y, 0x00ffff, 2);
+      this.vx = this.driftVx;
+      this.vy = this.driftVy + Math.sin(this.timer * 1.5) * 25;
+      const pos = this.mesh.position;
+      if (!this.mineArmed && playerPos && Math.hypot(playerPos.x - pos.x, playerPos.y - pos.y) < Enemy.MINE_TRIGGER) {
+        this.mineArmed = true;
+        this.mineFuse = 0.6;
+        SoundManager.playBloop(1.8);
+      }
+      if (this.mineArmed) {
+        this.mineFuse -= dt;
+        this.vx *= 0.3; this.vy *= 0.3; // brakes while the fuse burns
+        const blink = Math.floor(this.mineFuse * 14) % 2 === 0;
+        (this.mesh.material as THREE.MeshBasicMaterial).map = AssetManager.getTexture(blink ? 'solar_mine_armed' : 'solar_mine');
+        if (this.mineFuse <= 0) {
+          // Ring burst: 8 slow shots, rotated randomly so it can't be memorised.
+          const a0 = Math.random() * Math.PI;
+          for (let k = 0; k < 8; k++) {
+            const a = a0 + (k / 8) * Math.PI * 2;
+            bullets?.spawn(pos.x, pos.y, Math.cos(a) * 135, Math.sin(a) * 135, false);
+          }
+          particles?.spawnExplosion(pos.x, pos.y, 0xff5a4a, 22);
+          particles?.spawnExplosion(pos.x, pos.y, 0x7ae07a, 10);
+          SoundManager.playExplosion('small', 1.2);
+          this.active = false;
+          this.mesh.visible = false;
+          return;
+        }
       }
     } else if (this.type.startsWith('asteroid')) {
       this.spinPhase += this.rotSpeed * dt;
@@ -381,7 +413,7 @@ export class Enemy extends Entity {
 
     // Firing
     if (this.fireCooldown > 0) this.fireCooldown -= dt;
-    if (this.fireCooldown <= 0 && bullets && this.mesh.position.x < cameraX + 400 && this.mesh.position.x > cameraX - 400 && !this.type.startsWith('asteroid')) {
+    if (this.fireCooldown <= 0 && bullets && this.mesh.position.x < cameraX + 400 && this.mesh.position.x > cameraX - 400 && !this.type.startsWith('asteroid') && this.type !== 'solar_mine') {
       SoundManager.playEnemyFire(0.9 + Math.random() * 0.2);
       if (this.type === 'bioDrone') {
         bullets.spawn(this.mesh.position.x - 18, this.mesh.position.y, -260, 0, false);

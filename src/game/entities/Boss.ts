@@ -133,10 +133,12 @@ export class Boss extends Entity {
       { offsetX: -50, offsetY: 32, hp: 70, interval: 2.3 },
       { offsetX: -50, offsetY: -32, hp: 70, interval: 2.3 }
     ] : stage === 3 ? [
-      { offsetX: -20, offsetY: 48, hp: 100, interval: 1.8 },
-      { offsetX: 10, offsetY: 24, hp: 110, interval: 2.0 },
-      { offsetX: 10, offsetY: -24, hp: 110, interval: 2.0 },
-      { offsetX: -20, offsetY: -48, hp: 100, interval: 1.8 }
+      // Solar Dock: two hub guns, and the power node on each wing's truss.
+      // Destroying a node cuts its wing loose (see SolarDock).
+      { offsetX: -24, offsetY: 38, hp: 70, interval: 2.4, tex: 'boss2_turret' },
+      { offsetX: -24, offsetY: -38, hp: 70, interval: 2.4, tex: 'boss2_turret' },
+      { offsetX: 12, offsetY: 56, hp: 120, interval: 3.0, tex: 'boss3_node' },
+      { offsetX: 12, offsetY: -56, hp: 120, interval: 3.0, tex: 'boss3_node' }
     ] : stage === 4 ? [
       { offsetX: -10, offsetY: 56, hp: 120, interval: 1.8 },
       { offsetX: 15, offsetY: 28, hp: 120, interval: 2.2 },
@@ -153,8 +155,9 @@ export class Boss extends Entity {
     const turretTex = AssetManager.getTexture(stage === 2 ? 'boss2_turret' : 'turret');
 
     turretConfigs.forEach((cfg, idx) => {
+      const tex = (cfg as { tex?: string }).tex;
       const mat = new THREE.MeshBasicMaterial({ 
-        map: turretTex, 
+        map: tex ? AssetManager.getTexture(tex) : turretTex, 
         transparent: true,
         alphaTest: 0.05,
         depthWrite: false
@@ -567,6 +570,11 @@ export class Boss extends Entity {
   hullHit(pos: THREE.Vector3, r: number): boolean {
     const dx = pos.x - this.mesh.position.x, dy = pos.y - this.mesh.position.y;
     return dx * dx + dy * dy <= (this.radius + r) ** 2;
+  }
+
+  /** Does a circle at `pos` touch a damaging hazard (e.g. a firing beam)? */
+  hazardHit(_pos: THREE.Vector3, _r: number): boolean {
+    return false;
   }
 
   /** Damage multiplier for a hull hit at `pos` (weak spots / armour). */
