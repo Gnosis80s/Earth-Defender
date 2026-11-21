@@ -12,7 +12,6 @@ import { Missile } from './entities/Missile';
 import { AchievementManager } from './AchievementManager';
 import { SoundManager } from './SoundManager';
 import { Scheduler } from './Scheduler';
-import { WasmCoreEngine } from './wasm/WasmCore';
 
 /** Visual parameters for a projectile hitting a boss turret or hull. */
 interface BossImpactFx {
@@ -329,8 +328,6 @@ export class Game {
     const time = this.simTime;
     const activeDt = this.isReadyPhase ? 0 : dt;
 
-    const simStart = performance.now();
-
     if (this.weaponUpgradeCooldown > 0) {
       this.weaponUpgradeCooldown -= activeDt;
     }
@@ -377,16 +374,6 @@ export class Game {
         }
       }
     }
-
-    // Engine telemetry for the architecture modal
-    const simEnd = performance.now();
-    WasmCoreEngine.getInstance().recordSimTime(
-      (simEnd - simStart) * 1000,
-      this.level.enemies.length,
-      this.bullets.bullets.filter(b => b.active).length,
-      this.particles.particles.filter(p => p.active).length,
-      this.level.enemies.length * 4
-    );
 
     this.updateBoss(activeDt, time);
     this.checkCollisions();

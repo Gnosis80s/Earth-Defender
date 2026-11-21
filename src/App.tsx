@@ -4,7 +4,6 @@ import { InputManager } from './game/InputManager';
 import { AchievementManager, Achievement } from './game/AchievementManager';
 import { SoundManager } from './game/SoundManager';
 import { StoryModal } from './components/StoryModal';
-import { CppArchitectureModal } from './components/CppArchitectureModal';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -38,11 +37,10 @@ export default function App() {
   const [selectedLaser, setSelectedLaser] = useState('bulletPlayer');
   const [hardcoreMode, setHardcoreMode] = useState(false);
 
-  // Achievements, Story, and C++ WASM Architecture Modals
+  // Achievements and Story modals
   const [toasts, setToasts] = useState<Achievement[]>([]);
   const [showAchievementsModal, setShowAchievementsModal] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
-  const [showCppModal, setShowCppModal] = useState(false);
   
   // Unlocks checking
   const [unlocks, setUnlocks] = useState({
@@ -337,14 +335,6 @@ export default function App() {
                 <span className="hidden lg:inline uppercase tracking-wider">{paused ? 'Resume' : 'Pause'}</span>
               </button>
             )}
-            <button 
-              onClick={() => { SoundManager.init(); SoundManager.playBloop(); pauseIfPlaying(); setShowCppModal(true); }}
-              className="px-3 py-1.5 bg-cyan-950/70 hover:bg-cyan-900 border border-cyan-400/80 rounded-md text-cyan-300 font-bold text-xs flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.3)] transition-all cursor-pointer hover:scale-105 active:scale-95"
-              title="Inspect C++ / WASM Engine Core"
-            >
-              <span className="text-cyan-400 animate-pulse text-sm">⚡</span>
-              <span className="hidden sm:inline uppercase tracking-wider">C++ / WASM</span>
-            </button>
             <button 
               onClick={() => { SoundManager.init(); SoundManager.playBloop(); pauseIfPlaying(); setShowAchievementsModal(true); }}
               className="px-3 py-1.5 bg-amber-950/70 hover:bg-amber-900 border border-amber-400/80 rounded-md text-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-[0_0_12px_rgba(251,191,36,0.3)] transition-all cursor-pointer hover:scale-105 active:scale-95"
@@ -726,13 +716,6 @@ export default function App() {
                 </button>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <button 
-                    onClick={() => { SoundManager.init(); SoundManager.playBloop(); pauseIfPlaying(); setShowCppModal(true); }}
-                    className="flex-1 sm:flex-none px-4 py-3.5 bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 font-bold text-xs sm:text-sm border border-cyan-400/80 rounded-xl shadow-[0_0_12px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-105"
-                  >
-                    <span className="text-cyan-400">⚡</span>
-                    <span>C++ / WASM</span>
-                  </button>
-                  <button 
                     onClick={() => { SoundManager.init(); SoundManager.playBloop(); setShowStoryModal(true); }}
                     className="flex-1 sm:flex-none px-4 py-3.5 bg-yellow-950/80 hover:bg-yellow-900 text-yellow-300 font-bold text-xs sm:text-sm border border-yellow-400/80 rounded-xl shadow-[0_0_12px_rgba(234,179,8,0.3)] transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-105"
                   >
@@ -1024,13 +1007,6 @@ export default function App() {
                 setShowStoryModal(false);
                 startGame(1);
               }} 
-            />
-          )}
-
-          {/* C++ & WebAssembly Architecture Modal */}
-          {showCppModal && (
-            <CppArchitectureModal 
-              onClose={() => setShowCppModal(false)} 
             />
           )}
 
