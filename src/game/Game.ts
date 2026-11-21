@@ -240,6 +240,7 @@ export class Game {
     // Drawing-buffer size is managed by resize(); CSS size by the page layout.
     this.renderer.setSize(800, 600, false);
     this.renderer.setClearColor(0x050510);
+    this.renderer.localClippingEnabled = true; // the stage 4 worm is clipped at the lunar ground line
 
     this.scene = new THREE.Scene();
 

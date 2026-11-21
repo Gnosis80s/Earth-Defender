@@ -4,6 +4,7 @@ import { Enemy } from './entities/Enemy';
 import { Boss } from './entities/Boss';
 import { AsteroidFortress } from './entities/AsteroidFortress';
 import { SolarDock } from './entities/SolarDock';
+import { VoidLeviathan } from './entities/VoidLeviathan';
 import { MoonBody, MoonView } from './art/MoonShader';
 import { ParticleManager } from './ParticleManager';
 import { BlastDoor } from './entities/BlastDoor';
@@ -470,6 +471,7 @@ export class Level {
       this.setNightCityVisible(false);
       if (stage === 2) AssetManager.ensure(AssetManager.STAGE2_TEXTURES);
       if (stage === 3) AssetManager.ensure(AssetManager.STAGE3_TEXTURES);
+      if (stage === 4) AssetManager.ensure(AssetManager.STAGE4_TEXTURES);
       this.setAsteroidBeltVisible(stage === 2);
       this.setLunarOrbitVisible(stage === 3);
       this.bgMountains1.visible = false;
@@ -989,6 +991,7 @@ export class Level {
   spawnBoss(camX: number) {
     this.boss = this.currentStage === 2 ? new AsteroidFortress(this.scene, camX + 520, 0)
       : this.currentStage === 3 ? new SolarDock(this.scene, camX + 520, 0)
+      : this.currentStage === 4 ? new VoidLeviathan(this.scene, camX + 300, 0)
       : new Boss(this.scene, camX + 500, 0, this.currentStage);
   }
 }

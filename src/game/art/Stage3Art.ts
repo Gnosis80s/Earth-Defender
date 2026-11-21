@@ -27,29 +27,29 @@ function rng(seed: number) {
 // A tiny shape painter: beveled shapes lit by the sun.
 // ---------------------------------------------------------------------------
 
-type Mat = 'steel' | 'dark' | 'gold' | 'cells' | 'alien' | 'glass';
-interface Shape {
+export type Mat = 'steel' | 'dark' | 'gold' | 'cells' | 'alien' | 'glass' | 'chitin' | 'regolith' | 'glow';
+export interface Shape {
   /** Signed distance inside (>0) and the outward gradient at (x, y) (world-style coords, y up). */
   sd: (x: number, y: number) => { d: number; gx: number; gy: number };
   mat: Mat;
   bevel: number;
 }
 
-const rect = (cx: number, cy: number, hw: number, hh: number, mat: Mat, bevel = 2): Shape => ({
+export const rect = (cx: number, cy: number, hw: number, hh: number, mat: Mat, bevel = 2): Shape => ({
   mat, bevel,
   sd: (x, y) => {
     const dx = hw - Math.abs(x - cx), dy = hh - Math.abs(y - cy);
     return dx < dy ? { d: dx, gx: Math.sign(x - cx), gy: 0 } : { d: dy, gx: 0, gy: Math.sign(y - cy) };
   },
 });
-const circle = (cx: number, cy: number, r: number, mat: Mat, bevel = 3): Shape => ({
+export const circle = (cx: number, cy: number, r: number, mat: Mat, bevel = 3): Shape => ({
   mat, bevel,
   sd: (x, y) => {
     const dx = x - cx, dy = y - cy, l = Math.hypot(dx, dy) || 1;
     return { d: r - l, gx: dx / l, gy: dy / l };
   },
 });
-const octagon = (cx: number, cy: number, r: number, mat: Mat, bevel = 4): Shape => ({
+export const octagon = (cx: number, cy: number, r: number, mat: Mat, bevel = 4): Shape => ({
   mat, bevel,
   sd: (x, y) => {
     const dx = x - cx, dy = y - cy;
@@ -64,11 +64,25 @@ const octagon = (cx: number, cy: number, r: number, mat: Mat, bevel = 4): Shape 
   },
 });
 
+export const ellipse = (cx: number, cy: number, rx: number, ry: number, mat: Mat, bevel = 4): Shape => ({
+  mat, bevel,
+  sd: (x, y) => {
+    const u = (x - cx) / rx, v = (y - cy) / ry, l = Math.hypot(u, v) || 1;
+    const gx = u / rx, gy = v / ry, gl = Math.hypot(gx, gy) || 1;
+    return { d: (1 - l) * Math.min(rx, ry), gx: gx / gl, gy: gy / gl };
+  },
+});
+
+const CHITIN: RGB[] = ['#0b0711', '#1a1024', '#2b1a3a', '#402652', '#5a346e', '#7b4b92', '#a874bf', '#d3a9e6'].map(hex);
+const REGOLITH: RGB[] = ['#06080c', '#11151c', '#1d222b', '#2c323c', '#3f4651', '#565d68', '#717884', '#8f96a1', '#b2b8c0'].map(hex);
+
 /**
  * Paint shapes (later = on top) into a W x H canvas whose origin is the
  * centre, y up. Adds a dark 1px outline around the union.
  */
-function paint(W: number, H: number, shapes: Shape[], opts: { seed?: number; scorch?: number } = {}) {
+export function paint(W: number, H: number, shapes: Shape[], opts: { seed?: number; scorch?: number; noOutline?: boolean; sun?: V3 } = {}) {
+  const SUN_ = opts.sun ? norm(opts.sun) : SUN;
+  const HALF_ = norm([SUN_[0], SUN_[1], SUN_[2] + 1]);
   const { canvas, ctx, img } = newCanvas(W, H);
   const mask = new Uint8Array(W * H);
   const seed = opts.seed ?? 1;
@@ -84,8 +98,8 @@ function paint(W: number, H: number, shapes: Shape[], opts: { seed?: number; sco
       mask[j * W + i] = 1;
       const t = clamp01(1 - info.d / hit.bevel);
       const n = norm([info.gx * t * 1.4, info.gy * t * 1.4, 1]);
-      const diff = clamp01(dot(n, SUN));
-      const spec = Math.pow(clamp01(dot(n, HALF)), 20);
+      const diff = clamp01(dot(n, SUN_));
+      const spec = Math.pow(clamp01(dot(n, HALF_)), 20);
       let col: RGB;
       switch (hit.mat) {
         case 'steel': {
@@ -100,7 +114,7 @@ function paint(W: number, H: number, shapes: Shape[], opts: { seed?: number; sco
           // Crinkled thermal foil.
           const cr = fbm3(x * 0.45, y * 0.45, seed + 3, 3, 7);
           const nn = norm([n[0] + (cr - 0.5) * 1.6, n[1] + (fbm3(x * 0.45 + 9, y * 0.45, seed, 3, 8) - 0.5) * 1.6, n[2]]);
-          col = rampDither(GOLD, 0.15 + 0.6 * clamp01(dot(nn, SUN)) + Math.pow(clamp01(dot(nn, HALF)), 12) * 0.6, i, j);
+          col = rampDither(GOLD, 0.15 + 0.6 * clamp01(dot(nn, SUN_)) + Math.pow(clamp01(dot(nn, HALF_)), 12) * 0.6, i, j);
           break;
         }
         case 'cells': {
@@ -117,6 +131,22 @@ function paint(W: number, H: number, shapes: Shape[], opts: { seed?: number; sco
           col = rampDither(ALIEN, 0.1 + 0.35 * diff + (v > 0.85 ? 0.5 : 0), i, j);
           break;
         }
+        case 'chitin': {
+          // Glossy alien carapace: strong specular, faint growth rings.
+          const ring = Math.sin((x * 0.9 + y * 0.3) + fbm3(x * 0.1, y * 0.1, seed + 2, 2, 4) * 6) * 0.06;
+          col = rampDither(CHITIN, 0.1 + 0.65 * diff + spec * 0.7 + ring, i, j);
+          break;
+        }
+        case 'regolith': {
+          const g = (fbm3(x * 0.2, y * 0.2, seed + 7, 3, 12) - 0.5) * 0.25;
+          col = rampDither(REGOLITH, 0.2 + 0.6 * diff + g, i, j);
+          break;
+        }
+        case 'glow': {
+          // Emissive: ignores the sun.
+          col = rampDither(ALIEN, 0.55 + 0.45 * (1 - t), i, j);
+          break;
+        }
         case 'glass':
           col = rampDither(CELL, 0.2 + 0.6 * diff + spec, i, j);
           break;
@@ -131,7 +161,7 @@ function paint(W: number, H: number, shapes: Shape[], opts: { seed?: number; sco
     }
   }
   // Outline
-  for (let j = 0; j < H; j++) {
+  for (let j = 0; j < H && !opts.noOutline; j++) {
     for (let i = 0; i < W; i++) {
       if (!mask[j * W + i]) continue;
       const e = (a: number, b: number) => a < 0 || b < 0 || a >= W || b >= H || !mask[b * W + a];

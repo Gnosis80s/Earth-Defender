@@ -8,6 +8,9 @@ import {
   drawSpaceNebula, drawBeltFar, drawBeltMid, drawRockFrame, drawFortress, drawFortressShutter,
   drawFortressCore, drawCoreGlow, drawFortressTurret, ROCK_FRAMES, RockKind, rockVariantCount,
 } from './art/Stage2Art';
+import {
+  drawWormHead, drawWormSegment, drawWormTail, drawLauncherBase, drawLauncherPod, drawHatchFrame, drawHatchPanel, drawHatchShaft, drawLamp,
+} from './art/Stage4Props';
 import { drawSunGlare, drawOrbitalWreckage, drawMine, drawDockHub, drawDockWing, drawDockNode, drawLensGlow } from './art/Stage3Art';
 
 /** Every asteroid tumble frame, as texture names (`rock_<kind>_<variant>_<frame>`). */
@@ -32,6 +35,7 @@ export class AssetManager {
     'launchpad_deck', 'launchpad_tower', 'launchpad_fuel', 'launchpad_arm_left', 'launchpad_arm_right',
     ...AssetManager.STAGE2_TEXTURES,
     ...AssetManager.STAGE3_TEXTURES,
+    ...AssetManager.STAGE4_TEXTURES,
     'bg_lunar_far', 'bg_lunar', 'earth',
   ]) {
     this.ensureRegistered();
@@ -63,6 +67,12 @@ export class AssetManager {
   static readonly STAGE3_TEXTURES: string[] = [
     'sun_glare', 'orbital_wreck', 'earth_far', 'solar_mine', 'solar_mine_armed',
     'boss3', 'boss3_damaged', 'boss3_wing_top', 'boss3_wing_bottom', 'boss3_node', 'boss3_lens_glow',
+  ];
+
+  /** Stage 4 props (the terrain and Earth are listed in the default prewarm). */
+  static readonly STAGE4_TEXTURES: string[] = [
+    'turret_base', 'turret_launcher', 'boss4_head', 'boss4_segment', 'boss4_tail', 'door_lamp',
+    'blast_door_horizontal_panel', 'blast_door_horizontal_frame', 'blast_door_horizontal_shaft',
   ];
 
   /** Generate anything in `names` not made yet (synchronous). */
@@ -183,16 +193,20 @@ export class AssetManager {
     this.generators['asteroid_chunk'] = () => this.getTexture('rock_chunk_0_0');
     this.generators['asteroid_gold'] = () => this.getTexture('rock_gold_0_0');
     this.generators['turret'] = () => this.generateTurretTexture();
-    this.generators['turret_base'] = () => this.generateTurretBaseTexture();
-    this.generators['turret_launcher'] = () => this.generateTurretLauncherTexture();
+    this.generators['turret_base'] = () => this.createTextureFromCanvas(drawLauncherBase());
+    this.generators['turret_launcher'] = () => this.createTextureFromCanvas(drawLauncherPod());
+    this.generators['boss4_head'] = () => this.createTextureFromCanvas(drawWormHead());
+    this.generators['boss4_segment'] = () => this.createTextureFromCanvas(drawWormSegment());
+    this.generators['boss4_tail'] = () => this.createTextureFromCanvas(drawWormTail());
+    this.generators['door_lamp'] = () => this.createTextureFromCanvas(drawLamp());
     this.generators['bulletTurretLaser'] = () => this.generateTurretLaser();
     this.generators['bulletIonLaser'] = () => this.generateIonLaser();
     this.generators['blast_door_top'] = () => this.generateBlastDoorTop();
     this.generators['blast_door_bottom'] = () => this.generateBlastDoorBottom();
     this.generators['blast_door_frame'] = () => this.generateBlastDoorFrame();
-    this.generators['blast_door_horizontal_panel'] = () => this.generateBlastDoorHorizontalPanel();
-    this.generators['blast_door_horizontal_frame'] = () => this.generateBlastDoorHorizontalFrame();
-    this.generators['blast_door_horizontal_shaft'] = () => this.generateBlastDoorHorizontalShaft();
+    this.generators['blast_door_horizontal_panel'] = () => this.createTextureFromCanvas(drawHatchPanel());
+    this.generators['blast_door_horizontal_frame'] = () => this.createTextureFromCanvas(drawHatchFrame());
+    this.generators['blast_door_horizontal_shaft'] = () => this.createTextureFromCanvas(drawHatchShaft());
     this.generators['subboss_gatekeeper'] = () => this.generateSubbossGatekeeperTexture();
     this.generators['launchpad_deck'] = () => this.createTextureFromCanvas(drawPadDeck());
     this.generators['launchpad_arm_left'] = () => this.createTextureFromCanvas(drawServiceArm(false));
@@ -3773,135 +3787,6 @@ export class AssetManager {
     ctx.lineTo(95, 65);
     ctx.closePath();
     ctx.fill();
-
-    return this.createTextureFromCanvas(canvas);
-  }
-
-  private static generateBlastDoorHorizontalPanel() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 150;
-    canvas.height = 60;
-    const ctx = canvas.getContext('2d')!;
-
-    // Dark industrial lunar floor panel
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, 150, 60);
-
-    // Steel armor plate body
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(4, 4, 142, 52);
-
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(8, 8, 134, 44);
-
-    // Diagonal Yellow Hazard Warning Stripes along right meeting edge (x = 110 to 150)
-    ctx.fillStyle = '#eab308';
-    for (let y = -20; y < 80; y += 20) {
-      ctx.beginPath();
-      ctx.moveTo(110, y);
-      ctx.lineTo(125, y);
-      ctx.lineTo(150, y + 25);
-      ctx.lineTo(135, y + 25);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // Border
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(2, 2, 146, 56);
-
-    // Rivets
-    ctx.fillStyle = '#94a3b8';
-    for (let x = 15; x < 135; x += 30) {
-      ctx.fillRect(x, 6, 4, 4);
-      ctx.fillRect(x, 50, 4, 4);
-    }
-
-    // Glowing cyan hydraulic pressure pipe
-    ctx.fillStyle = '#00f0ff';
-    ctx.fillRect(10, 28, 130, 4);
-
-    return this.createTextureFromCanvas(canvas);
-  }
-
-  private static generateBlastDoorHorizontalFrame() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 360;
-    canvas.height = 80;
-    const ctx = canvas.getContext('2d')!;
-
-    ctx.clearRect(0, 0, 360, 80);
-
-    // Lunar Silo Outer Girder Frame
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, 0, 50, 80); // Left housing
-    ctx.fillRect(310, 0, 50, 80); // Right housing
-    ctx.fillRect(0, 0, 360, 20); // Top lip girder
-
-    // Yellow Hazard Stripes along top lip
-    ctx.fillStyle = '#eab308';
-    for (let x = 0; x < 360; x += 30) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x + 12, 0);
-      ctx.lineTo(x + 6, 20);
-      ctx.lineTo(x - 6, 20);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // Chrome hydraulic cylinders on housing
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(50, 25, 40, 12);
-    ctx.fillRect(270, 25, 40, 12);
-
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(50, 28, 40, 4);
-    ctx.fillRect(270, 28, 40, 4);
-
-    // Border highlights
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(0, 0, 50, 80);
-    ctx.strokeRect(310, 0, 50, 80);
-    ctx.strokeRect(0, 0, 360, 20);
-
-    return this.createTextureFromCanvas(canvas);
-  }
-
-  private static generateBlastDoorHorizontalShaft() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 300;
-    canvas.height = 160;
-    const ctx = canvas.getContext('2d')!;
-
-    // Deep subterranean abyss gradient (dark fading to cavern darkness)
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, 160);
-    bgGrad.addColorStop(0, '#0f172a');
-    bgGrad.addColorStop(0.4, '#090d16');
-    bgGrad.addColorStop(1, '#020408');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, 300, 160);
-
-    // Steel vertical elevator guide rails on left and right walls
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(10, 0, 20, 160);
-    ctx.fillRect(270, 0, 20, 160);
-
-    // Glowing cyan status indicator lights along guide rails going down into the moon
-    ctx.fillStyle = '#00f0ff';
-    for (let y = 10; y < 160; y += 30) {
-      ctx.fillRect(16, y, 8, 12);
-      ctx.fillRect(276, y, 8, 12);
-    }
-
-    // Red warning lights deeper down
-    ctx.fillStyle = '#ef4444';
-    for (let y = 25; y < 160; y += 30) {
-      ctx.fillRect(16, y, 8, 4);
-      ctx.fillRect(276, y, 8, 4);
-    }
 
     return this.createTextureFromCanvas(canvas);
   }

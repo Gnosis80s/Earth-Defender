@@ -78,17 +78,18 @@ export class BlastDoor {
       this.frameMesh.renderOrder = 6;
 
       // Status lock LEDs (left & right)
-      const lightGeo = new THREE.PlaneGeometry(16, 16);
+      const lightGeo = new THREE.PlaneGeometry(12, 12);
       const redLightMat = new THREE.MeshBasicMaterial({
+        map: AssetManager.getTexture('door_lamp'),
         color: 0xff0000,
         transparent: true
       });
       this.topLockLight = new THREE.Mesh(lightGeo, redLightMat);
-      this.topLockLight.position.set(-150, isCeiling ? -20 : 20, 2);
+      this.topLockLight.position.set(-157, isCeiling ? -30 : 30, 2);
       this.topLockLight.renderOrder = 7;
 
       this.bottomLockLight = new THREE.Mesh(lightGeo, redLightMat.clone());
-      this.bottomLockLight.position.set(150, isCeiling ? -20 : 20, 2);
+      this.bottomLockLight.position.set(157, isCeiling ? -30 : 30, 2);
       this.bottomLockLight.renderOrder = 7;
 
       this.group.add(this.topDoor);

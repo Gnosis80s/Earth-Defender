@@ -36,6 +36,8 @@ export class Enemy extends Entity {
   private rockFrame = -1;
   driftVx = 0;
   driftVy = 0;
+  /** Downward pull for rocks thrown up from the lunar surface (0 = drift in space). */
+  gravity = 0;
 
   // Proximity mines: arm when the player comes close, then burst.
   private mineArmed = false;
@@ -294,8 +296,18 @@ export class Enemy extends Entity {
     } else if (this.type.startsWith('asteroid')) {
       this.spinPhase += this.rotSpeed * dt;
       this.updateRockFrame();
+      if (this.gravity > 0) {
+        this.driftVy -= this.gravity * dt;
+        // Falling rocks shatter on the lunar floor.
+        if (this.driftVy < 0 && this.mesh.position.y < -215) {
+          particles?.spawnExplosion(this.mesh.position.x, this.mesh.position.y, 0x8f96a1, 10);
+          this.active = false;
+          this.mesh.visible = false;
+          return;
+        }
+      }
       this.vx = this.driftVx;
-      this.vy = this.driftVy + Math.sin(this.timer * 0.8) * 8;
+      this.vy = this.driftVy + (this.gravity > 0 ? 0 : Math.sin(this.timer * 0.8) * 8);
       if (this.type === 'asteroid_gold' && particles && Math.random() < 0.45) {
         particles.spawnExplosion(
           this.mesh.position.x + (Math.random() - 0.5) * 24,
