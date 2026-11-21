@@ -254,6 +254,7 @@ export class Game {
     this.camera.position.z = 100;
 
     AssetManager.init();
+    AssetManager.isBusy = () => !this.stopped && !this.paused && !this.isReadyPhase && !this.gameOver && !this.victory;
     InputManager.init();
 
     this.bullets = new BulletManager(this.scene);

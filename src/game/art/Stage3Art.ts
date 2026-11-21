@@ -27,7 +27,7 @@ function rng(seed: number) {
 // A tiny shape painter: beveled shapes lit by the sun.
 // ---------------------------------------------------------------------------
 
-export type Mat = 'steel' | 'dark' | 'gold' | 'cells' | 'alien' | 'glass' | 'chitin' | 'regolith' | 'glow';
+export type Mat = 'steel' | 'dark' | 'gold' | 'cells' | 'alien' | 'glass' | 'chitin' | 'regolith' | 'glow' | 'flesh' | 'bone' | 'eye';
 export interface Shape {
   /** Signed distance inside (>0) and the outward gradient at (x, y) (world-style coords, y up). */
   sd: (x: number, y: number) => { d: number; gx: number; gy: number };
@@ -74,6 +74,8 @@ export const ellipse = (cx: number, cy: number, rx: number, ry: number, mat: Mat
 });
 
 const CHITIN: RGB[] = ['#0b0711', '#1a1024', '#2b1a3a', '#402652', '#5a346e', '#7b4b92', '#a874bf', '#d3a9e6'].map(hex);
+export const FLESH: RGB[] = ['#100208', '#260611', '#420c1c', '#621628', '#862636', '#a83e46', '#c8645c', '#e4967e', '#f8cdb4'].map(hex);
+export const BONE: RGB[] = ['#140f0b', '#30261c', '#52432f', '#7a6648', '#a48c66', '#cbb68c', '#ece0bc'].map(hex);
 const REGOLITH: RGB[] = ['#06080c', '#11151c', '#1d222b', '#2c323c', '#3f4651', '#565d68', '#717884', '#8f96a1', '#b2b8c0'].map(hex);
 
 /**
@@ -140,6 +142,26 @@ export function paint(W: number, H: number, shapes: Shape[], opts: { seed?: numb
         case 'regolith': {
           const g = (fbm3(x * 0.2, y * 0.2, seed + 7, 3, 12) - 0.5) * 0.25;
           col = rampDither(REGOLITH, 0.2 + 0.6 * diff + g, i, j);
+          break;
+        }
+        case 'flesh': {
+          // Wet meat: lumpy, veined, with sharp glistening highlights.
+          const lump = fbm3(x * 0.16, y * 0.16, seed + 9, 3, 14) - 0.5;
+          const nn = norm([n[0] + lump * 0.9, n[1] + (fbm3(x * 0.16 + 5, y * 0.16, seed + 9, 3, 15) - 0.5) * 0.9, n[2]]);
+          const wet = Math.pow(clamp01(dot(nn, HALF_)), 36);
+          const vein = 1 - Math.abs(2 * fbm3(x * 0.11, y * 0.11, seed + 19, 3, 16) - 1);
+          let v = 0.12 + 0.6 * clamp01(dot(nn, SUN_)) + (vein > 0.9 ? -0.18 : 0);
+          col = rampDither(FLESH, v, i, j);
+          if (wet > 0.45) col = FLESH[8];
+          else if (wet > 0.25) col = FLESH[7];
+          break;
+        }
+        case 'bone':
+          col = rampDither(BONE, 0.15 + 0.7 * diff + spec * 0.4, i, j);
+          break;
+        case 'eye': {
+          // Eyeball: wet white sclera; the iris/pupil are drawn on top by the caller.
+          col = rampDither(BONE.slice(2), 0.35 + 0.6 * diff + spec, i, j);
           break;
         }
         case 'glow': {

@@ -11,6 +11,10 @@ import {
 import {
   drawWormHead, drawWormSegment, drawWormTail, drawLauncherBase, drawLauncherPod, drawHatchFrame, drawHatchPanel, drawHatchShaft, drawLamp,
 } from './art/Stage4Props';
+import { drawNearTile, drawFarTile } from './art/Stage5Art';
+import {
+  drawBioDrone, drawBioStalker, drawBioBehemoth, drawGatekeeper, drawJawDoor, drawJawFrame, drawMotherBrain, drawEyeStalk, drawLightning,
+} from './art/Stage5Creatures';
 import { drawSunGlare, drawOrbitalWreckage, drawMine, drawDockHub, drawDockWing, drawDockNode, drawLensGlow } from './art/Stage3Art';
 
 /** Every asteroid tumble frame, as texture names (`rock_<kind>_<variant>_<frame>`). */
@@ -36,6 +40,7 @@ export class AssetManager {
     ...AssetManager.STAGE2_TEXTURES,
     ...AssetManager.STAGE3_TEXTURES,
     ...AssetManager.STAGE4_TEXTURES,
+    ...AssetManager.STAGE5_TEXTURES,
     'bg_lunar_far', 'bg_lunar', 'earth',
   ]) {
     this.ensureRegistered();
@@ -44,17 +49,27 @@ export class AssetManager {
     const idle: (cb: (d: Deadline) => void) => void = (window as any).requestIdleCallback
       ? (cb) => (window as any).requestIdleCallback(cb, { timeout: 250 })
       : (cb) => setTimeout(() => cb({ timeRemaining: () => 8, didTimeout: true }), 50);
-    // Several small items per idle slice while there's time; at least one per slice.
+    // Several small items per idle slice while there's time. Heavy items
+    // (whole backdrops, bosses: 100-350 ms each) wait until play is
+    // interrupted (menu, pause, READY, stage clear) so they never hitch a frame.
     const next = (d: Deadline) => {
-      do {
-        const name = queue.shift();
-        if (!name) return;
+      while (queue.length) {
+        const k = this.isBusy() ? queue.findIndex((n) => !AssetManager.HEAVY.test(n)) : 0;
+        if (k < 0) { setTimeout(() => idle(next), 500); return; }
+        const [name] = queue.splice(k, 1);
         this.getTexture(name);
-      } while (d.timeRemaining() > 6);
-      idle(next);
+        if (d.timeRemaining() <= 6) break;
+      }
+      if (queue.length) idle(next);
     };
     idle(next);
   }
+
+  /** Textures too expensive to generate during active play. */
+  private static readonly HEAVY = /^(bg_|space_nebula|belt_|earth|night_|moon_halo|launchpad_|boss\d|orbital_wreck|sun_glare)/;
+
+  /** True while the player is actively playing (set by Game). */
+  static isBusy: () => boolean = () => false;
 
   /** Everything Stage 2 draws (backdrop, boss, every asteroid frame). */
   static readonly STAGE2_TEXTURES: string[] = [
@@ -73,6 +88,13 @@ export class AssetManager {
   static readonly STAGE4_TEXTURES: string[] = [
     'turret_base', 'turret_launcher', 'boss4_head', 'boss4_segment', 'boss4_tail', 'door_lamp',
     'blast_door_horizontal_panel', 'blast_door_horizontal_frame', 'blast_door_horizontal_shaft',
+  ];
+
+  /** Stage 5: the factory inside the Moon. */
+  static readonly STAGE5_TEXTURES: string[] = [
+    'bg_cavern_far', 'bg_cavern', 'bg_cavern_entry', 'bg_cavern_to_factory_far', 'bg_cavern_to_factory', 'bg_factory_far', 'bg_factory',
+    'enemyBioDrone', 'enemyBioStalker', 'enemyBioBehemoth', 'subboss_gatekeeper', 'blast_door_top', 'blast_door_bottom', 'blast_door_frame',
+    'boss5', 'boss5_rage', 'boss5_eye', 'lightning_0', 'lightning_1', 'lightning_2', 'door_lamp',
   ];
 
   /** Generate anything in `names` not made yet (synchronous). */
@@ -148,10 +170,13 @@ export class AssetManager {
     this.generators['earth_far'] = () => this.createTextureFromCanvas(drawEarth(64, { light: [0.86, 0.32, 0.4] }));
     this.generators['solar_mine_armed'] = () => this.createTextureFromCanvas(drawMine(true));
     this.generators['boss4'] = () => this.generateBossTexture(4);
-    this.generators['boss5'] = () => this.generateBossTexture(5);
-    this.generators['enemyBioDrone'] = () => this.generateEnemyBioDroneTexture();
-    this.generators['enemyBioStalker'] = () => this.generateEnemyBioStalkerTexture();
-    this.generators['enemyBioBehemoth'] = () => this.generateEnemyBioBehemothTexture();
+    this.generators['boss5'] = () => this.createTextureFromCanvas(drawMotherBrain(false));
+    this.generators['boss5_rage'] = () => this.createTextureFromCanvas(drawMotherBrain(true));
+    this.generators['boss5_eye'] = () => this.createTextureFromCanvas(drawEyeStalk());
+    for (let k = 0; k < 3; k++) this.generators[`lightning_${k}`] = () => this.createTextureFromCanvas(drawLightning(k * 7 + 1));
+    this.generators['enemyBioDrone'] = () => this.createTextureFromCanvas(drawBioDrone());
+    this.generators['enemyBioStalker'] = () => this.createTextureFromCanvas(drawBioStalker());
+    this.generators['enemyBioBehemoth'] = () => this.createTextureFromCanvas(drawBioBehemoth());
     this.generators['bulletPlayer'] = () => this.generateBullet(0x00ffff);
     this.generators['bulletPlayer_green'] = () => this.generateBullet(0x00ff00);
     this.generators['bulletPlayer_purple'] = () => this.generateBullet(0xff00ff);
@@ -167,13 +192,13 @@ export class AssetManager {
     this.generators['bg_lunar_far'] = () => this.createTextureFromCanvas(drawLunarFar());
     this.generators['bg_solar_dock'] = () => this.generateSolarDockBackground();
     this.generators['solar_mine'] = () => this.createTextureFromCanvas(drawMine(false));
-    this.generators['bg_cavern_far'] = () => this.generateCavernFarLandscape();
-    this.generators['bg_cavern'] = () => this.generateCavernLandscape();
-    this.generators['bg_cavern_entry'] = () => this.generateCavernEntryLandscape();
-    this.generators['bg_cavern_to_factory_far'] = () => this.generateCavernToFactoryFarLandscape();
-    this.generators['bg_cavern_to_factory'] = () => this.generateCavernToFactoryLandscape();
-    this.generators['bg_factory_far'] = () => this.generateFactoryFarLandscape();
-    this.generators['bg_factory'] = () => this.generateFactoryLandscape();
+    this.generators['bg_cavern_far'] = () => this.createTextureFromCanvas(drawFarTile('throat'));
+    this.generators['bg_cavern'] = () => this.createTextureFromCanvas(drawNearTile('throat'));
+    this.generators['bg_cavern_entry'] = () => this.createTextureFromCanvas(drawNearTile('entry'));
+    this.generators['bg_cavern_to_factory_far'] = () => this.createTextureFromCanvas(drawFarTile('throat_to_factory'));
+    this.generators['bg_cavern_to_factory'] = () => this.createTextureFromCanvas(drawNearTile('throat_to_factory'));
+    this.generators['bg_factory_far'] = () => this.createTextureFromCanvas(drawFarTile('factory'));
+    this.generators['bg_factory'] = () => this.createTextureFromCanvas(drawNearTile('factory'));
     this.generators['bg_factory_to_superstructure_far'] = () => this.generateFactoryToSuperstructureFarLandscape();
     this.generators['bg_factory_to_superstructure'] = () => this.generateFactoryToSuperstructureLandscape();
     this.generators['bg_superstructure_far'] = () => this.generateSuperstructureFarLandscape();
@@ -201,13 +226,13 @@ export class AssetManager {
     this.generators['door_lamp'] = () => this.createTextureFromCanvas(drawLamp());
     this.generators['bulletTurretLaser'] = () => this.generateTurretLaser();
     this.generators['bulletIonLaser'] = () => this.generateIonLaser();
-    this.generators['blast_door_top'] = () => this.generateBlastDoorTop();
-    this.generators['blast_door_bottom'] = () => this.generateBlastDoorBottom();
-    this.generators['blast_door_frame'] = () => this.generateBlastDoorFrame();
+    this.generators['blast_door_top'] = () => this.createTextureFromCanvas(drawJawDoor(false));
+    this.generators['blast_door_bottom'] = () => this.createTextureFromCanvas(drawJawDoor(true));
+    this.generators['blast_door_frame'] = () => this.createTextureFromCanvas(drawJawFrame());
     this.generators['blast_door_horizontal_panel'] = () => this.createTextureFromCanvas(drawHatchPanel());
     this.generators['blast_door_horizontal_frame'] = () => this.createTextureFromCanvas(drawHatchFrame());
     this.generators['blast_door_horizontal_shaft'] = () => this.createTextureFromCanvas(drawHatchShaft());
-    this.generators['subboss_gatekeeper'] = () => this.generateSubbossGatekeeperTexture();
+    this.generators['subboss_gatekeeper'] = () => this.createTextureFromCanvas(drawGatekeeper());
     this.generators['launchpad_deck'] = () => this.createTextureFromCanvas(drawPadDeck());
     this.generators['launchpad_arm_left'] = () => this.createTextureFromCanvas(drawServiceArm(false));
     this.generators['launchpad_arm_right'] = () => this.createTextureFromCanvas(drawServiceArm(true));

@@ -145,10 +145,10 @@ export class Boss extends Entity {
       { offsetX: 15, offsetY: -28, hp: 120, interval: 2.2 },
       { offsetX: -10, offsetY: -56, hp: 120, interval: 1.8 }
     ] : [
-      { offsetX: -25, offsetY: 62, hp: 150, interval: 1.5 },
-      { offsetX: 10, offsetY: 32, hp: 150, interval: 1.8 },
-      { offsetX: 10, offsetY: -32, hp: 150, interval: 1.8 },
-      { offsetX: -25, offsetY: -62, hp: 150, interval: 1.5 }
+      // Mother Brain: three eye stalks that project its psychic shield.
+      { offsetX: -40, offsetY: 72, hp: 90, interval: 2.4, tex: 'boss5_eye' },
+      { offsetX: -96, offsetY: 22, hp: 90, interval: 2.2, tex: 'boss5_eye' },
+      { offsetX: 40, offsetY: 74, hp: 90, interval: 2.6, tex: 'boss5_eye' }
     ];
 
     const turretGeo = new THREE.PlaneGeometry(28, 28);

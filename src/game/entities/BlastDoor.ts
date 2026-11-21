@@ -133,8 +133,9 @@ export class BlastDoor {
       this.frameMesh.renderOrder = 6;
 
       // Status lock LED indicators
-      const lightGeo = new THREE.PlaneGeometry(20, 20);
+      const lightGeo = new THREE.PlaneGeometry(14, 14);
       const redLightMat = new THREE.MeshBasicMaterial({
+        map: AssetManager.getTexture('door_lamp'),
         color: 0xff0000,
         transparent: true
       });

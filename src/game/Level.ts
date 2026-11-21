@@ -5,6 +5,7 @@ import { Boss } from './entities/Boss';
 import { AsteroidFortress } from './entities/AsteroidFortress';
 import { SolarDock } from './entities/SolarDock';
 import { VoidLeviathan } from './entities/VoidLeviathan';
+import { MotherBrain } from './entities/MotherBrain';
 import { MoonBody, MoonView } from './art/MoonShader';
 import { ParticleManager } from './ParticleManager';
 import { BlastDoor } from './entities/BlastDoor';
@@ -358,8 +359,8 @@ export class Level {
     this.scene.add(this.bgSolarDock2);
 
     const geoCavern = new THREE.PlaneGeometry(800, 600);
-    this.matCavernFar1 = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_cavern_far'), transparent: false, depthWrite: false });
-    this.matCavernFar2 = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_cavern_far'), transparent: false, depthWrite: false });
+    this.matCavernFar1 = new THREE.MeshBasicMaterial({ map: null, transparent: false, depthWrite: false });
+    this.matCavernFar2 = new THREE.MeshBasicMaterial({ map: null, transparent: false, depthWrite: false });
     this.bgCavernFar1 = new THREE.Mesh(geoCavern, this.matCavernFar1);
     this.bgCavernFar1.position.set(0, 0, -8);
     this.bgCavernFar1.renderOrder = 2;
@@ -370,8 +371,8 @@ export class Level {
     this.scene.add(this.bgCavernFar1);
     this.scene.add(this.bgCavernFar2);
 
-    this.matCavern1 = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_cavern'), transparent: true, depthWrite: false });
-    this.matCavern2 = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_cavern'), transparent: true, depthWrite: false });
+    this.matCavern1 = new THREE.MeshBasicMaterial({ map: null, transparent: true, depthWrite: false });
+    this.matCavern2 = new THREE.MeshBasicMaterial({ map: null, transparent: true, depthWrite: false });
     this.bgCavern1 = new THREE.Mesh(geoCavern, this.matCavern1);
     this.bgCavern1.position.set(0, 0, -4);
     this.bgCavern1.renderOrder = 4;
@@ -472,6 +473,7 @@ export class Level {
       if (stage === 2) AssetManager.ensure(AssetManager.STAGE2_TEXTURES);
       if (stage === 3) AssetManager.ensure(AssetManager.STAGE3_TEXTURES);
       if (stage === 4) AssetManager.ensure(AssetManager.STAGE4_TEXTURES);
+      if (stage === 5) AssetManager.ensure(AssetManager.STAGE5_TEXTURES);
       this.setAsteroidBeltVisible(stage === 2);
       this.setLunarOrbitVisible(stage === 3);
       this.bgMountains1.visible = false;
@@ -542,6 +544,7 @@ export class Level {
   /** Stage 3 Moon plane centre (y); the sphere centre sits 910 lower, so the limb peaks near y = -100. */
   static readonly MOON3_Y = -90;
   private moonTime = 0;
+  private heartT = 0;
 
   isCameraScrolling(player?: any): boolean {
     if (player && (player.isStage4Entry || player.isStage1Takeoff)) {
@@ -652,6 +655,20 @@ export class Level {
       const dockX = camX * 0.35;
       this.bgSolarDock1.position.x = camX - (dockX % 800);
       this.bgSolarDock2.position.x = this.bgSolarDock1.position.x + 800;
+    }
+
+    // Stage 5: the factory breathes. A lub-dub heartbeat darkens and
+    // brightens the walls; it races as the Mother Brain nears death.
+    if (this.currentStage === 5) {
+      const dread = this.boss && (this.boss as any).dread !== undefined ? (this.boss as any).dread : 0;
+      this.heartT += dt * (1 / (1.15 - 0.55 * dread));
+      const ph = this.heartT % 1;
+      const beat = Math.exp(-(((ph - 0.04) / 0.05) ** 2)) + 0.65 * Math.exp(-(((ph - 0.26) / 0.05) ** 2));
+      const near = 0.8 + 0.2 * beat, far = 0.86 + 0.14 * beat;
+      this.matCavern1.color.setRGB(near, near * (0.97 - dread * 0.08), near * (0.97 - dread * 0.08));
+      this.matCavern2.color.copy(this.matCavern1.color);
+      this.matCavernFar1.color.setRGB(far, far, far);
+      this.matCavernFar2.color.setRGB(far, far, far);
     }
 
     // Stage 5 Cavern / Factory Layer (Multi-Layer Parallax)
@@ -992,6 +1009,7 @@ export class Level {
     this.boss = this.currentStage === 2 ? new AsteroidFortress(this.scene, camX + 520, 0)
       : this.currentStage === 3 ? new SolarDock(this.scene, camX + 520, 0)
       : this.currentStage === 4 ? new VoidLeviathan(this.scene, camX + 300, 0)
+      : this.currentStage === 5 ? new MotherBrain(this.scene, camX + 520, 0)
       : new Boss(this.scene, camX + 500, 0, this.currentStage);
   }
 }
