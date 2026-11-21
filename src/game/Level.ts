@@ -18,6 +18,8 @@ export class Level {
   bgEarth!: THREE.Mesh;
   bgLunar1!: THREE.Mesh;
   bgLunar2!: THREE.Mesh;
+  bgLunarFar1!: THREE.Mesh;
+  bgLunarFar2!: THREE.Mesh;
   bgCavernFar1!: THREE.Mesh;
   bgCavernFar2!: THREE.Mesh;
   bgCavern1!: THREE.Mesh;
@@ -146,7 +148,7 @@ export class Level {
     this.bgMoon.renderOrder = 1;
     this.scene.add(this.bgMoon);
 
-    const earthGeo = new THREE.PlaneGeometry(160, 160);
+    const earthGeo = new THREE.PlaneGeometry(192, 192); // 1 texel per world unit
     const earthMat = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('earth'), transparent: true, depthWrite: false });
     this.bgEarth = new THREE.Mesh(earthGeo, earthMat);
     this.bgEarth.position.set(300, 125, -14);
@@ -154,13 +156,26 @@ export class Level {
     this.bgEarth.visible = false;
     this.scene.add(this.bgEarth);
 
+    // Stage 4 lunar terrain: distant highlands (slow parallax) behind the
+    // foothills + cratered plain (faster). Both have transparent skies so the
+    // starfield and Earth show through.
+    const matLunarFar = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_lunar_far'), transparent: true, depthWrite: false });
+    this.bgLunarFar1 = new THREE.Mesh(geo, matLunarFar);
+    this.bgLunarFar1.position.set(0, -130, -7);
+    this.bgLunarFar1.renderOrder = 2;
+    this.bgLunarFar2 = new THREE.Mesh(geo, matLunarFar);
+    this.bgLunarFar2.position.set(800, -130, -7);
+    this.bgLunarFar2.renderOrder = 2;
+    this.scene.add(this.bgLunarFar1);
+    this.scene.add(this.bgLunarFar2);
+
     this.matLunar = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('bg_lunar'), transparent: true, depthWrite: false });
     this.bgLunar1 = new THREE.Mesh(geo, this.matLunar);
     this.bgLunar1.position.set(0, -130, -5);
-    this.bgLunar1.renderOrder = 2;
+    this.bgLunar1.renderOrder = 3;
     this.bgLunar2 = new THREE.Mesh(geo, this.matLunar);
     this.bgLunar2.position.set(800, -130, -5);
-    this.bgLunar2.renderOrder = 2;
+    this.bgLunar2.renderOrder = 3;
     
     this.scene.add(this.bgLunar1);
     this.scene.add(this.bgLunar2);
@@ -265,6 +280,8 @@ export class Level {
       this.bgCity2.visible = true;
       this.bgLunar1.visible = false;
       this.bgLunar2.visible = false;
+      this.bgLunarFar1.visible = false;
+      this.bgLunarFar2.visible = false;
       this.bgEarth.visible = false;
       this.bgSolarDock1.visible = false;
       this.bgSolarDock2.visible = false;
@@ -286,6 +303,8 @@ export class Level {
       this.bgCity2.visible = false;
       this.bgLunar1.visible = (stage === 4);
       this.bgLunar2.visible = (stage === 4);
+      this.bgLunarFar1.visible = (stage === 4);
+      this.bgLunarFar2.visible = (stage === 4);
       this.bgEarth.visible = (stage === 4);
       this.bgSolarDock1.visible = false;
       this.bgSolarDock2.visible = false;
@@ -328,7 +347,7 @@ export class Level {
       if (stage === 1) {
         this.starPositions[i * 3 + 1] = 40 + Math.random() * 240;
       } else if (stage === 4) {
-        this.starPositions[i * 3 + 1] = -10 + Math.random() * 280;
+        this.starPositions[i * 3 + 1] = -90 + Math.random() * 370;
       } else {
         this.starPositions[i * 3 + 1] = (Math.random() - 0.5) * 560;
       }
@@ -359,7 +378,7 @@ export class Level {
         if (this.currentStage === 1) {
           this.starPositions[i * 3 + 1] = 40 + Math.random() * 240;
         } else if (this.currentStage === 4) {
-          this.starPositions[i * 3 + 1] = -10 + Math.random() * 280;
+          this.starPositions[i * 3 + 1] = -90 + Math.random() * 370;
         } else {
           this.starPositions[i * 3 + 1] = (Math.random() - 0.5) * 560;
         }
@@ -411,6 +430,9 @@ export class Level {
     const lunarX = camX * 0.6;
     this.bgLunar1.position.x = camX - (lunarX % 800);
     this.bgLunar2.position.x = this.bgLunar1.position.x + 800;
+    const lunarFarX = camX * 0.3;
+    this.bgLunarFar1.position.x = camX - (lunarFarX % 800);
+    this.bgLunarFar2.position.x = this.bgLunarFar1.position.x + 800;
 
     // Solar Dock layer
     if (this.bgSolarDock1.visible) {
