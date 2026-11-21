@@ -4,6 +4,15 @@ import {
   drawNightSky, drawNightClouds, drawNightMountains, drawCitySkylineFar, drawCitySkylineNear, drawMoonHalo, drawSearchlightBeam,
 } from './art/Stage1Art';
 import { drawPadDeck, drawServiceArm, drawControlTower, drawFuelCompound } from './art/LaunchpadArt';
+import {
+  drawSpaceNebula, drawDistantMoon, drawBeltFar, drawBeltMid, drawRockFrame, drawFortress, drawFortressShutter,
+  drawFortressCore, drawCoreGlow, drawFortressTurret, ROCK_FRAMES, RockKind, rockVariantCount,
+} from './art/Stage2Art';
+
+/** Every asteroid tumble frame, as texture names (`rock_<kind>_<variant>_<frame>`). */
+const ROCK_FRAME_NAMES: string[] = (['large', 'small', 'chunk', 'gold'] as RockKind[]).flatMap((k) =>
+  Array.from({ length: rockVariantCount(k) }, (_, v) => Array.from({ length: ROCK_FRAMES }, (_, f) => `rock_${k}_${v}_${f}`)).flat()
+);
 
 export class AssetManager {
   static textures: Record<string, THREE.Texture> = {};
@@ -20,20 +29,37 @@ export class AssetManager {
   static prewarmInIdle(names: string[] = [
     'night_sky', 'bg_mountains', 'bg_city_far', 'bg_city', 'night_clouds', 'moon_halo', 'searchlight_beam',
     'launchpad_deck', 'launchpad_tower', 'launchpad_fuel', 'launchpad_arm_left', 'launchpad_arm_right',
+    ...AssetManager.STAGE2_TEXTURES,
     'bg_lunar_far', 'bg_lunar', 'earth',
   ]) {
     this.ensureRegistered();
     const queue = names.filter((n) => !this.textures[n]);
-    const idle: (cb: () => void) => void = (window as any).requestIdleCallback
-      ? (cb) => (window as any).requestIdleCallback(cb, { timeout: 120 })
-      : (cb) => setTimeout(cb, 50);
-    const next = () => {
-      const name = queue.shift();
-      if (!name) return;
-      this.getTexture(name);
+    type Deadline = { timeRemaining(): number; didTimeout: boolean };
+    const idle: (cb: (d: Deadline) => void) => void = (window as any).requestIdleCallback
+      ? (cb) => (window as any).requestIdleCallback(cb, { timeout: 250 })
+      : (cb) => setTimeout(() => cb({ timeRemaining: () => 8, didTimeout: true }), 50);
+    // Several small items per idle slice while there's time; at least one per slice.
+    const next = (d: Deadline) => {
+      do {
+        const name = queue.shift();
+        if (!name) return;
+        this.getTexture(name);
+      } while (d.timeRemaining() > 6);
       idle(next);
     };
     idle(next);
+  }
+
+  /** Everything Stage 2 draws (backdrop, boss, every asteroid frame). */
+  static readonly STAGE2_TEXTURES: string[] = [
+    'space_nebula', 'moon_distant', 'belt_far', 'belt_mid',
+    'boss2', 'boss2_turret', 'boss2_core', 'boss2_core_glow', 'boss2_shutter_top', 'boss2_shutter_bottom', 'boss2_damaged',
+    ...ROCK_FRAME_NAMES,
+  ];
+
+  /** Generate anything in `names` not made yet (synchronous). */
+  static ensure(names: string[]) {
+    for (const n of names) this.getTexture(n);
   }
 
   private static ensureRegistered() {
@@ -78,7 +104,21 @@ export class AssetManager {
     this.generators['enemySniper'] = () => this.generateEnemySniperTexture();
     this.generators['subboss1'] = () => this.generateSubBossTexture();
     this.generators['boss1'] = () => this.generateBossTexture(1);
-    this.generators['boss2'] = () => this.generateBossTexture(2);
+    this.generators['boss2'] = () => this.createTextureFromCanvas(drawFortress(false));
+    this.generators['boss2_damaged'] = () => this.createTextureFromCanvas(drawFortress(true));
+    this.generators['boss2_turret'] = () => this.createTextureFromCanvas(drawFortressTurret());
+    this.generators['boss2_core'] = () => this.createTextureFromCanvas(drawFortressCore());
+    this.generators['boss2_core_glow'] = () => this.createTextureFromCanvas(drawCoreGlow());
+    this.generators['boss2_shutter_top'] = () => this.createTextureFromCanvas(drawFortressShutter(false));
+    this.generators['boss2_shutter_bottom'] = () => this.createTextureFromCanvas(drawFortressShutter(true));
+    this.generators['space_nebula'] = () => this.createTextureFromCanvas(drawSpaceNebula());
+    this.generators['moon_distant'] = () => this.createTextureFromCanvas(drawDistantMoon(112));
+    this.generators['belt_far'] = () => this.createTextureFromCanvas(drawBeltFar());
+    this.generators['belt_mid'] = () => this.createTextureFromCanvas(drawBeltMid());
+    for (const name of ROCK_FRAME_NAMES) {
+      const [, kind, v, f] = name.split('_');
+      this.generators[name] = () => this.createTextureFromCanvas(drawRockFrame(kind as RockKind, +v, +f));
+    }
     this.generators['boss3'] = () => this.generateBossTexture(3);
     this.generators['boss4'] = () => this.generateBossTexture(4);
     this.generators['boss5'] = () => this.generateBossTexture(5);
@@ -121,9 +161,11 @@ export class AssetManager {
     this.generators['searchlight_beam'] = () => this.createTextureFromCanvas(drawSearchlightBeam());
     this.generators['drone'] = () => this.generateDrone();
     this.generators['powerup'] = () => this.generatePowerup();
-    this.generators['asteroid_large'] = () => this.generateAsteroid(72);
-    this.generators['asteroid_small'] = () => this.generateAsteroid(44);
-    this.generators['asteroid_gold'] = () => this.generateGoldenAsteroid(56);
+    // Asteroids are animated per instance (rock_* frames); these are just the initial sprite.
+    this.generators['asteroid_large'] = () => this.getTexture('rock_large_0_0');
+    this.generators['asteroid_small'] = () => this.getTexture('rock_small_0_0');
+    this.generators['asteroid_chunk'] = () => this.getTexture('rock_chunk_0_0');
+    this.generators['asteroid_gold'] = () => this.getTexture('rock_gold_0_0');
     this.generators['turret'] = () => this.generateTurretTexture();
     this.generators['turret_base'] = () => this.generateTurretBaseTexture();
     this.generators['turret_launcher'] = () => this.generateTurretLauncherTexture();
@@ -3187,117 +3229,6 @@ export class AssetManager {
     ctx.arc(38, 11, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillRect(16, 10, 14, 2);
-
-    return this.createTextureFromCanvas(canvas);
-  }
-
-  private static generateAsteroid(size: number) {
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d')!;
-
-    const center = size / 2;
-    const radius = size / 2 - 4;
-
-    // Outer jagged rock shape
-    ctx.fillStyle = '#475569';
-    ctx.beginPath();
-    const numPoints = 9;
-    for (let i = 0; i < numPoints; i++) {
-      const angle = (i / numPoints) * Math.PI * 2;
-      const r = radius * (0.8 + (Math.sin(i * 3 + size) * 0.2));
-      const px = center + Math.cos(angle) * r;
-      const py = center + Math.sin(angle) * r;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-
-    // Inner highlight / texture details
-    ctx.fillStyle = '#64748b';
-    ctx.beginPath();
-    ctx.arc(center - size * 0.1, center - size * 0.1, radius * 0.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Craters
-    ctx.fillStyle = '#334155';
-    ctx.beginPath();
-    ctx.arc(center + size * 0.15, center + size * 0.1, radius * 0.25, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(center - size * 0.2, center + size * 0.15, radius * 0.18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(center + size * 0.05, center - size * 0.2, radius * 0.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Rim highlight
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(center, center, radius * 0.85, Math.PI * 0.8, Math.PI * 1.4);
-    ctx.stroke();
-
-    return this.createTextureFromCanvas(canvas);
-  }
-
-  private static generateGoldenAsteroid(size: number = 56) {
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d')!;
-
-    const center = size / 2;
-    const radius = size / 2 - 4;
-
-    // Outer radial gold shine
-    const radGrad = ctx.createRadialGradient(center, center, 4, center, center, radius + 2);
-    radGrad.addColorStop(0, '#fef08a'); // sparkling center
-    radGrad.addColorStop(0.4, '#f59e0b'); // amber gold
-    radGrad.addColorStop(0.8, '#b45309'); // rich bronze-gold
-    radGrad.addColorStop(1, '#78350f'); // dark gold outline
-
-    ctx.fillStyle = radGrad;
-    ctx.beginPath();
-    const numPoints = 10;
-    for (let i = 0; i < numPoints; i++) {
-      const angle = (i / numPoints) * Math.PI * 2;
-      const r = radius * (0.8 + (Math.sin(i * 3 + size) * 0.2));
-      const px = center + Math.cos(angle) * r;
-      const py = center + Math.sin(angle) * r;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-
-    // Inner metallic golden facets
-    ctx.fillStyle = '#fde047';
-    ctx.beginPath();
-    ctx.arc(center - size * 0.1, center - size * 0.1, radius * 0.55, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Craters / Gem facets
-    ctx.fillStyle = '#d97706';
-    ctx.beginPath();
-    ctx.arc(center + size * 0.15, center + size * 0.1, radius * 0.22, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(center - size * 0.2, center + size * 0.15, radius * 0.18, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Bright sparkling highlight cross
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(center - size * 0.15, center - size * 0.15, radius * 0.15, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Metallic rim stroke
-    ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
 
     return this.createTextureFromCanvas(canvas);
   }

@@ -87,7 +87,7 @@ export class Game {
   onStageUpdate: (stage: number) => void = () => {};
   onStageClear: (clearedStage: number) => void = () => {};
   onBossHpUpdate: (bossData: { active: boolean; hp: number; maxHp: number; name: string; isExploding: boolean } | null) => void = () => {};
-  onAsteroidWarningUpdate: (active: boolean) => void = () => {};
+  onAsteroidWarningUpdate: (warning: 'field' | 'storm' | null) => void = () => {};
   onMissileWarningUpdate: (active: boolean) => void = () => {};
   onGameOver: (victory: boolean) => void = () => {};
   onReadyChange: (showing: boolean) => void = () => {};
@@ -258,7 +258,7 @@ export class Game {
     this.bullets = new BulletManager(this.scene);
     this.particles = new ParticleManager(this.scene);
     this.level = new Level(this.scene, this.camera);
-    this.level.onAsteroidWarningUpdate = (active) => this.onAsteroidWarningUpdate(active);
+    this.level.onAsteroidWarningUpdate = (active, kind = 'field') => this.onAsteroidWarningUpdate(active ? kind : null);
     this.level.onMissileWarningUpdate = (active) => this.onMissileWarningUpdate(active);
     this.player = new Player(this.scene);
 
@@ -710,13 +710,31 @@ export class Game {
     }
     AchievementManager.recordEnemyKill();
 
-    this.particles.spawnExplosion(x, y, isGold ? 0xffd700 : 0xff4400, 20);
+    if (e.type.startsWith('asteroid')) {
+      // Rock dust rather than a fireball.
+      this.particles.spawnExplosion(x, y, isGold ? 0xffd700 : 0xb89a7a, e.type === 'asteroid_chunk' ? 10 : 18);
+      this.particles.spawnExplosion(x, y, 0x6b5a50, e.type === 'asteroid_large' ? 16 : 8);
+      if (e.type === 'asteroid_large') this.splitAsteroid(e);
+    } else {
+      this.particles.spawnExplosion(x, y, 0xff4400, 20);
+    }
     SoundManager.playExplosion(Game.isLargeExplosionType(e.type) ? 'large' : 'small', 0.8 + Math.random() * 0.4);
 
     if (isGold) {
       this.tryDropPowerup(x, y, true, ['P', 'M', 'S']);
     } else {
       this.tryDropPowerup(x, y, e.type === 'heavy');
+    }
+  }
+
+  /** A destroyed large asteroid breaks into three fragments that fly apart. */
+  private splitAsteroid(e: Enemy) {
+    const base = Math.random() * Math.PI * 2;
+    for (let k = 0; k < 3; k++) {
+      const a = base + (k / 3) * Math.PI * 2;
+      const chunk = new Enemy(this.scene, 'asteroid_chunk', e.mesh.position.x + Math.cos(a) * 12, e.mesh.position.y + Math.sin(a) * 12, 'straight');
+      chunk.launch(e.driftVx + Math.cos(a) * 85, e.driftVy + Math.sin(a) * 85);
+      this.level.enemies.push(chunk);
     }
   }
 
@@ -779,9 +797,18 @@ export class Game {
       return true;
     }
 
-    if (this.circleIntersect(pos, radius, boss.mesh.position, boss.radius)) {
-      boss.takeDamage(damage);
-      this.particles.spawnExplosion(pos.x, pos.y, fx.bodyColor, fx.bodyCount);
+    if (boss.hullHit(pos, radius)) {
+      const k = boss.weakSpotScale(pos);
+      boss.takeDamage(damage * k);
+      if (k > 1) {
+        // Weak spot: hot pink burst.
+        this.particles.spawnExplosion(pos.x, pos.y, 0xff3a5a, fx.bodyCount + 6);
+      } else if (k < 1) {
+        // Armour: sparks glance off.
+        this.particles.spawnSparks(pos.x, pos.y, Math.PI * (0.75 + Math.random() * 0.5), 0xcfd8e6, 3);
+      } else {
+        this.particles.spawnExplosion(pos.x, pos.y, fx.bodyColor, fx.bodyCount);
+      }
       if (boss.hp <= 0) {
         this.triggerHitStop(0.09);
       }
@@ -883,7 +910,7 @@ export class Game {
       }
 
       const boss = this.level.boss;
-      if (boss && boss.active && this.circleIntersect(this.player.mesh.position, 12, boss.mesh.position, boss.radius)) {
+      if (boss && boss.active && !boss.isExploding && boss.hullHit(this.player.mesh.position, 12)) {
          this.takePlayerDamage();
       }
     }

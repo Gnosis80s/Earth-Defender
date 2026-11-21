@@ -47,9 +47,12 @@ export class Boss extends Entity {
   beamMesh: THREE.Mesh;
   chargeCoreMesh: THREE.Mesh;
 
-  constructor(scene: THREE.Scene, x: number, y: number, stage: number = 1) {
+  protected scene: THREE.Scene;
+
+  constructor(scene: THREE.Scene, x: number, y: number, stage: number = 1, width = 128, height = 128) {
     const texName = `boss${Math.min(5, Math.max(1, stage))}`;
-    super(scene, AssetManager.getTexture(texName), 128, 128);
+    super(scene, AssetManager.getTexture(texName), width, height);
+    this.scene = scene;
     this.mesh.position.set(x, y, 0);
     this.stage = stage;
 
@@ -58,7 +61,7 @@ export class Boss extends Entity {
       this.maxHp = 600;
     } else if (stage === 2) {
       this.name = 'CYBER CORE DESTROYER';
-      this.maxHp = 1000;
+      this.maxHp = 1150;
     } else if (stage === 3) {
       this.name = 'SOLAR DOCK OVERLORD';
       this.maxHp = 1350;
@@ -124,9 +127,11 @@ export class Boss extends Entity {
       { offsetX: -10, offsetY: 45, hp: 75, interval: 2.3 },
       { offsetX: -10, offsetY: -45, hp: 75, interval: 2.3 }
     ] : stage === 2 ? [
-      { offsetX: -5, offsetY: 52, hp: 95, interval: 2.0 },
-      { offsetX: -30, offsetY: 0, hp: 110, interval: 2.5 },
-      { offsetX: -5, offsetY: -52, hp: 95, interval: 2.0 }
+      // Asteroid fortress: two rim turrets and two flanking the core socket.
+      { offsetX: -20, offsetY: 58, hp: 70, interval: 2.8 },
+      { offsetX: -20, offsetY: -58, hp: 70, interval: 2.8 },
+      { offsetX: -50, offsetY: 32, hp: 70, interval: 2.3 },
+      { offsetX: -50, offsetY: -32, hp: 70, interval: 2.3 }
     ] : stage === 3 ? [
       { offsetX: -20, offsetY: 48, hp: 100, interval: 1.8 },
       { offsetX: 10, offsetY: 24, hp: 110, interval: 2.0 },
@@ -145,7 +150,7 @@ export class Boss extends Entity {
     ];
 
     const turretGeo = new THREE.PlaneGeometry(28, 28);
-    const turretTex = AssetManager.getTexture('turret');
+    const turretTex = AssetManager.getTexture(stage === 2 ? 'boss2_turret' : 'turret');
 
     turretConfigs.forEach((cfg, idx) => {
       const mat = new THREE.MeshBasicMaterial({ 
@@ -282,6 +287,20 @@ export class Boss extends Entity {
     }
 
     this.timer += dt;
+    this.behave(dt, time, cameraX, bullets, particles, game, playerPos);
+
+    if (this.hp <= 0 && !this.isExploding) {
+      this.isExploding = true;
+      this.explodeTimer = 2.8;
+      this.explodeTickTimer = 0;
+    }
+  }
+
+  /**
+   * Movement and attacks. The default is the shared pattern used by most
+   * stages (drift, telegraphed beam, spreads); stage-specific bosses override it.
+   */
+  protected behave(dt: number, time: number, cameraX: number, bullets?: BulletManager, particles?: ParticleManager, game?: any, playerPos?: THREE.Vector3) {
 
     // Phase 2 Rage Transition Check (at 50% HP)
     const hpPercent = this.hp / this.maxHp;
@@ -420,46 +439,7 @@ export class Boss extends Entity {
       this.beamMesh.visible = false;
     }
 
-    // Turrets update & slow laser firing
-    for (const t of this.turrets) {
-      if (!t.active) {
-        t.mesh.visible = false;
-        continue;
-      }
-
-      t.mesh.visible = this.active && !this.isExploding;
-      const tx = this.mesh.position.x + t.offsetX;
-      const ty = this.mesh.position.y + t.offsetY;
-      t.mesh.position.set(tx, ty, 2);
-
-      if (playerPos) {
-        const dx = playerPos.x - tx;
-        const dy = playerPos.y - ty;
-        t.mesh.rotation.z = Math.atan2(dy, dx);
-      }
-
-      if (this.isExploding || !this.active) continue;
-
-      t.fireTimer -= dt;
-      if (t.fireTimer <= 0 && bullets && this.mesh.position.x <= enterTargetX + 20) {
-        t.fireTimer = t.fireInterval + (Math.random() * 0.4 - 0.2);
-        SoundManager.playTurretFire();
-
-        // Aim laser at player at slow rate
-        let dirX = -1;
-        let dirY = 0;
-        if (playerPos) {
-          const dx = playerPos.x - tx;
-          const dy = playerPos.y - ty;
-          const dist = Math.hypot(dx, dy) || 1;
-          dirX = dx / dist;
-          dirY = dy / dist;
-        }
-
-        const laserSpeed = 250;
-        bullets.spawn(tx, ty, dirX * laserSpeed, dirY * laserSpeed, false, 1, true);
-      }
-    }
+    this.updateTurrets(dt, bullets, playerPos, this.mesh.position.x <= enterTargetX + 20);
 
     // Main Boss Firing logic based on stage & phase
     if (this.fireCooldown > 0) this.fireCooldown -= dt;
@@ -538,12 +518,59 @@ export class Boss extends Entity {
         }
       }
     }
+  }
 
-    if (this.hp <= 0 && !this.isExploding) {
-      this.isExploding = true;
-      this.explodeTimer = 2.8;
-      this.explodeTickTimer = 0;
+  /** Aim every live turret at the player and fire on its own timer. */
+  protected updateTurrets(dt: number, bullets: BulletManager | undefined, playerPos: THREE.Vector3 | undefined, canFire: boolean, intervalScale = 1) {
+    for (const t of this.turrets) {
+      if (!t.active) {
+        t.mesh.visible = false;
+        continue;
+      }
+
+      t.mesh.visible = this.active && !this.isExploding;
+      const tx = this.mesh.position.x + t.offsetX;
+      const ty = this.mesh.position.y + t.offsetY;
+      t.mesh.position.set(tx, ty, 2);
+
+      if (playerPos) {
+        const dx = playerPos.x - tx;
+        const dy = playerPos.y - ty;
+        t.mesh.rotation.z = Math.atan2(dy, dx);
+      }
+
+      if (this.isExploding || !this.active) continue;
+
+      t.fireTimer -= dt;
+      if (t.fireTimer <= 0 && bullets && canFire) {
+        t.fireTimer = t.fireInterval * intervalScale + (Math.random() * 0.4 - 0.2);
+        SoundManager.playTurretFire();
+
+        // Aim laser at player at slow rate
+        let dirX = -1;
+        let dirY = 0;
+        if (playerPos) {
+          const dx = playerPos.x - tx;
+          const dy = playerPos.y - ty;
+          const dist = Math.hypot(dx, dy) || 1;
+          dirX = dx / dist;
+          dirY = dy / dist;
+        }
+
+        const laserSpeed = 250;
+        bullets.spawn(tx, ty, dirX * laserSpeed, dirY * laserSpeed, false, 1, true);
+      }
     }
   }
-}
 
+  /** Does a circle at `pos` overlap the hull? */
+  hullHit(pos: THREE.Vector3, r: number): boolean {
+    const dx = pos.x - this.mesh.position.x, dy = pos.y - this.mesh.position.y;
+    return dx * dx + dy * dy <= (this.radius + r) ** 2;
+  }
+
+  /** Damage multiplier for a hull hit at `pos` (weak spots / armour). */
+  weakSpotScale(_pos: THREE.Vector3): number {
+    return 1;
+  }
+}

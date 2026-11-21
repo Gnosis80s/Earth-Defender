@@ -106,3 +106,26 @@ export function StageClearCard({ stage, bonus }: { stage: number; bonus: number 
     </div>
   );
 }
+
+/**
+ * Hazard warning strip (asteroid field, meteor storm, missile defence):
+ * hazard-striped bars, a blinking headline and a steady sub-line.
+ */
+export function WarningBanner({ title, sub, tone, low = false }: {
+  title: string; sub: string; tone: 'amber' | 'red'; low?: boolean;
+}) {
+  const c = tone === 'amber'
+    ? { stripe: '#f59e0b', text: 'text-amber-300', subText: 'text-amber-100/90' }
+    : { stripe: '#ef4444', text: 'text-red-400', subText: 'text-red-100/90' };
+  const stripes = { background: `repeating-linear-gradient(135deg, ${c.stripe} 0 0.5em, #0a0606 0.5em 1em)` };
+  return (
+    <div className={`absolute ${low ? 'top-[7em]' : 'top-[3.4em]'} left-1/2 -translate-x-1/2 w-[70%] z-30 pointer-events-none px-wipe`}>
+      <div className="h-[0.5em]" style={stripes} />
+      <div className="bg-[#0a0606]/90 py-[0.7em] flex flex-col items-center gap-[0.45em] font-pixel">
+        <div className={`text-[0.8em] tracking-[0.15em] ${c.text} px-blink`}>▲ {title} ▲</div>
+        <div className={`text-[0.5em] tracking-[0.1em] ${c.subText}`}>{sub}</div>
+      </div>
+      <div className="h-[0.5em]" style={stripes} />
+    </div>
+  );
+}

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { AssetManager } from './AssetManager';
 import { Enemy } from './entities/Enemy';
 import { Boss } from './entities/Boss';
+import { AsteroidFortress } from './entities/AsteroidFortress';
 import { ParticleManager } from './ParticleManager';
 import { BlastDoor } from './entities/BlastDoor';
 import { Launchpad } from './entities/Launchpad';
@@ -29,6 +30,8 @@ export class Level {
   bgLunar1!: THREE.Mesh;
   bgLunar2!: THREE.Mesh;
   bgLunarFar1!: THREE.Mesh;
+  // Stage 2 (asteroid belt): nebula sky, far dust band, mid rocks. Textures are assigned on first use.
+  private beltLayers: { meshes: THREE.Mesh[]; tex: string; parallax: number }[] = [];
   bgLunarFar2!: THREE.Mesh;
   bgCavernFar1!: THREE.Mesh;
   bgCavernFar2!: THREE.Mesh;
@@ -81,7 +84,8 @@ export class Level {
   private waveTimer = 0;
   private pendingSpawns: { delay: number; spec: SpawnSpec }[] = [];
 
-  onAsteroidWarningUpdate: (active: boolean) => void = () => {};
+  /** 'field' = asteroid field ahead; 'storm' = the stage 2 boss's meteor storm. */
+  onAsteroidWarningUpdate: (active: boolean, kind?: 'field' | 'storm') => void = () => {};
   onMissileWarningUpdate: (active: boolean) => void = () => {};
 
   constructor(scene: THREE.Scene, camera: THREE.OrthographicCamera) {
@@ -183,6 +187,41 @@ export class Level {
     }
   }
 
+  /**
+   * Stage 2 layers, back to front: nebula (0.02x, behind the stars), distant
+   * dust band (0.12x), scattered mid-distance rocks (0.35x). Materials start
+   * without a map so these textures aren't generated until Stage 2 needs them.
+   */
+  private initAsteroidBelt() {
+    const make = (tex: string, w: number, h: number, y: number, z: number, order: number, parallax: number) => {
+      const geo = new THREE.PlaneGeometry(w, h);
+      const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false });
+      const meshes = [0, 1].map(() => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(0, y, z);
+        m.renderOrder = order;
+        m.visible = false;
+        this.scene.add(m);
+        return m;
+      });
+      this.beltLayers.push({ meshes, tex, parallax });
+    };
+    make('space_nebula', 800, 600, 0, -30, -2, 0.02);
+    make('belt_far', 800, 260, -150, -12, 1, 0.12);
+    make('belt_mid', 800, 600, 0, -7, 3, 0.35);
+  }
+
+  private setAsteroidBeltVisible(on: boolean) {
+    for (const layer of this.beltLayers) {
+      const mat = layer.meshes[0].material as THREE.MeshBasicMaterial;
+      if (on && !mat.map) {
+        mat.map = AssetManager.getTexture(layer.tex);
+        mat.needsUpdate = true;
+      }
+      for (const m of layer.meshes) m.visible = on;
+    }
+  }
+
   private setNightCityVisible(on: boolean) {
     for (const m of [this.bgSky, this.moonHalo, this.bgClouds1, this.bgClouds2, this.bgCityFar1, this.bgCityFar2, ...this.searchlights]) {
       m.visible = on;
@@ -214,6 +253,7 @@ export class Level {
     this.scene.add(this.bgCity2);
 
     this.initNightCity(geo);
+    this.initAsteroidBelt();
 
     const moonGeo = new THREE.PlaneGeometry(128, 128);
     const moonMat = new THREE.MeshBasicMaterial({ map: AssetManager.getTexture('moon'), transparent: true, depthWrite: false });
@@ -369,12 +409,16 @@ export class Level {
       this.bgMoon.scale.set(0.8, 0.8, 1);
       this.bgMoon.position.y = 200;
       this.setNightCityVisible(true);
+      this.setAsteroidBeltVisible(false);
+      (this.bgMoon.material as THREE.MeshBasicMaterial).map = AssetManager.getTexture('moon');
 
       // Create UK Military Base Launchpad at Stage 1 start
       this.launchpad = new Launchpad(this.scene, 0, 0);
     } else {
       // Level 2 and onwards: Remove city/mountain background and replace completely with deep space starfield!
       this.setNightCityVisible(false);
+      if (stage === 2) AssetManager.ensure(AssetManager.STAGE2_TEXTURES);
+      this.setAsteroidBeltVisible(stage === 2);
       this.bgMountains1.visible = false;
       this.bgMountains2.visible = false;
       this.bgCity1.visible = false;
@@ -392,9 +436,12 @@ export class Level {
       this.bgCavern2.visible = (stage === 5);
       this.bgMoon.visible = (stage === 1 || stage === 2 || stage === 3);
       
+      // Stage 2 shows the redrawn distant Moon (112 texels on a 128 plane -> 1:1).
+      const moonMat = this.bgMoon.material as THREE.MeshBasicMaterial;
+      moonMat.map = AssetManager.getTexture(stage === 2 ? 'moon_distant' : 'moon');
       if (stage === 2) {
-        this.bgMoon.scale.set(1.4, 1.4, 1);
-        this.bgMoon.position.y = 180;
+        this.bgMoon.scale.set(0.875, 0.875, 1);
+        this.bgMoon.position.y = 170;
       } else if (stage === 3) {
         this.bgMoon.scale.set(3.2, 3.2, 1); // Looming massive pixel art moon in high lunar orbit
         this.bgMoon.position.y = 80;
@@ -622,8 +669,13 @@ export class Level {
       this.bgMoon.position.x = camX + 180 - (camX * 0.04); // Massive looming moon in high orbit
       this.bgMoon.position.y = 80;
     } else if (this.currentStage === 2) {
-      this.bgMoon.position.x = camX + 260 - (camX * 0.03); // Deep space view
-      this.bgMoon.position.y = 180;
+      this.bgMoon.position.x = camX + 250 - (camX * 0.03); // Deep space view
+      this.bgMoon.position.y = 170;
+      for (const layer of this.beltLayers) {
+        const off = (camX * layer.parallax) % 800;
+        layer.meshes[0].position.x = camX - off;
+        layer.meshes[1].position.x = camX - off + 800;
+      }
     } else if (this.currentStage === 1) {
       this.bgMoon.position.x = camX + 290 - (camX * 0.01);
       this.bgMoon.position.y = 200;
@@ -738,19 +790,17 @@ export class Level {
 
         if (this.asteroidFieldActive) {
           // Asteroid field active: NO regular enemies spawn, only asteroids!
-          this.asteroidSpawnTimer += dt;
-          if (this.asteroidSpawnTimer > 0.15) {
-            this.asteroidSpawnTimer = 0;
+          // Irregular cadence; large rocks split into fragments when destroyed (Game.onEnemyKilled).
+          this.asteroidSpawnTimer -= dt;
+          if (this.asteroidSpawnTimer <= 0) {
+            this.asteroidSpawnTimer = 0.2 + Math.random() * 0.14;
 
             const hasGoldenAsteroid = this.enemies.some(e => e.active && e.type === 'asteroid_gold');
-            let type = 'asteroid_small';
-
-            // Always ensure a golden asteroid randomly spawns during the asteroid field
-            if (!hasGoldenAsteroid && Math.random() < 0.25) {
+            let type: string;
+            if (!hasGoldenAsteroid && Math.random() < 0.12) {
               type = 'asteroid_gold';
             } else {
-              const isLarge = Math.random() < 0.45;
-              type = isLarge ? 'asteroid_large' : 'asteroid_small';
+              type = Math.random() < 0.38 ? 'asteroid_large' : 'asteroid_small';
             }
 
             const y = (Math.random() - 0.5) * 520;
@@ -844,7 +894,9 @@ export class Level {
   }
 
   spawnBoss(camX: number) {
-    this.boss = new Boss(this.scene, camX + 500, 0, this.currentStage);
+    this.boss = this.currentStage === 2
+      ? new AsteroidFortress(this.scene, camX + 520, 0)
+      : new Boss(this.scene, camX + 500, 0, this.currentStage);
   }
 }
 

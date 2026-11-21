@@ -6,7 +6,7 @@ import { AchievementManager, Achievement } from './game/AchievementManager';
 import { SoundManager } from './game/SoundManager';
 import { StoryModal } from './components/StoryModal';
 import { TitleMenu } from './components/TitleMenu';
-import { ReadyCard, BossBar, StageClearCard } from './components/InGameOverlays';
+import { ReadyCard, BossBar, StageClearCard, WarningBanner } from './components/InGameOverlays';
 import { Frame, PxButton, PixelWord } from './components/ui/Pixel';
 
 export default function App() {
@@ -29,7 +29,7 @@ export default function App() {
   const [stage, setStage] = useState(1);
   const [clearedStageNotice, setClearedStageNotice] = useState<number | null>(null);
   const [bossData, setBossData] = useState<{ active: boolean; hp: number; maxHp: number; name: string; isExploding: boolean } | null>(null);
-  const [asteroidWarning, setAsteroidWarning] = useState(false);
+  const [asteroidWarning, setAsteroidWarning] = useState<'field' | 'storm' | null>(null);
   const [missileWarning, setMissileWarning] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showReady, setShowReady] = useState(false);
@@ -216,7 +216,7 @@ export default function App() {
     SoundManager.playBloop();
     gameRef.current?.stop();
     setBossData(null);
-    setAsteroidWarning(false);
+    setAsteroidWarning(null);
     setMissileWarning(false);
     setClearedStageNotice(null);
     setGameState('menu');
@@ -392,31 +392,16 @@ export default function App() {
           {gameState === 'playing' && bossData && bossData.active && <BossBar boss={bossData} />}
 
           {/* Asteroid Warning Overlay */}
-          {gameState === 'playing' && asteroidWarning && (
-            <div className="absolute top-[3.2em] left-1/2 -translate-x-1/2 z-30 w-[66%] bg-amber-950/95 border-2 border-amber-500 p-3 rounded-lg shadow-[0_0_35px_rgba(245,158,11,0.8)] text-center animate-pulse backdrop-blur-xs">
-              <div className="flex items-center justify-center gap-2 text-amber-400 font-black text-xs sm:text-sm tracking-widest uppercase">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-                <span>⚠️ WARNING: ASTEROID FIELD AHEAD ⚠️</span>
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-              </div>
-              <div className="text-amber-100 text-[11px] font-bold tracking-wider mt-1">
-                HEAVILY ARMORED ASTEROIDS — DANGER OF COLLISION!
-              </div>
-            </div>
+          {gameState === 'playing' && asteroidWarning === 'field' && (
+            <WarningBanner tone="amber" title="ASTEROID FIELD" sub="HEAVY ROCK AHEAD - SHOOT OR DODGE" />
+          )}
+          {gameState === 'playing' && asteroidWarning === 'storm' && (
+            <WarningBanner tone="amber" title="METEOR STORM" sub="ROCKS INCOMING FROM ABOVE" low />
           )}
 
           {/* Missile Defence Warning Overlay */}
           {gameState === 'playing' && missileWarning && (
-            <div className="absolute top-[3.2em] left-1/2 -translate-x-1/2 z-30 w-[66%] bg-red-950/95 border-2 border-red-500 p-3 rounded-lg shadow-[0_0_35px_rgba(239,68,68,0.9)] text-center animate-pulse backdrop-blur-xs">
-              <div className="flex items-center justify-center gap-2 text-red-400 font-black text-xs sm:text-sm tracking-widest uppercase">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-ping"></span>
-                <span>⚠️ WARNING: MISSILE DEFENCE AHEAD ⚠️</span>
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400 animate-ping"></span>
-              </div>
-              <div className="text-red-100 text-[11px] font-bold tracking-wider mt-1">
-                SURFACE ROCKET LAUNCHERS DETECTED — EVASIVE ACTION ADVISED!
-              </div>
-            </div>
+            <WarningBanner tone="red" title="MISSILE DEFENCE" sub="SURFACE LAUNCHERS DETECTED - EVADE" />
           )}
 
           {/* Stage clear card */}

@@ -4,6 +4,7 @@ import { AssetManager } from '../AssetManager';
 import { BulletManager } from '../BulletManager';
 import { ParticleManager } from '../ParticleManager';
 import { SoundManager } from '../SoundManager';
+import { ROCK_FRAMES, RockKind, rockVariantCount } from '../art/Stage2Art';
 
 export class Enemy extends Entity {
   type: string;
@@ -27,6 +28,14 @@ export class Enemy extends Entity {
   turretLauncherMesh: THREE.Mesh | null = null;
   private turretFlash: { value: number } | null = null;
   currentTurretAngle: number = Math.PI;
+
+  // Asteroids: tumble frames (lighting stays fixed) and drift velocity.
+  private rockKind: RockKind | null = null;
+  private rockVariant = 0;
+  private spinPhase = 0;
+  private rockFrame = -1;
+  driftVx = 0;
+  driftVy = 0;
   targetTurretAngle: number = Math.PI;
 
   constructor(scene: THREE.Scene, type: string, x: number, y: number, pattern: string) {
@@ -66,6 +75,10 @@ export class Enemy extends Entity {
       texName = 'asteroid_gold';
       size = 56;
       hp = 35;
+    } else if (type === 'asteroid_chunk') {
+      texName = 'asteroid_chunk';
+      size = 28;
+      hp = 5;
     } else if (type === 'turret') {
       texName = 'turret_base';
       size = 52;
@@ -98,7 +111,19 @@ export class Enemy extends Entity {
     this.maxHp = hp;
     this.radius = size / 2;
     if (type.startsWith('asteroid')) {
-      this.rotSpeed = (Math.random() - 0.5) * 2.5;
+      const kind = type.slice('asteroid_'.length) as RockKind;
+      this.rockKind = kind;
+      this.rockVariant = Math.floor(Math.random() * rockVariantCount(kind));
+      this.spinPhase = Math.random() * Math.PI * 2;
+      // Smaller rocks tumble faster; direction is random.
+      const spin = kind === 'large' ? 1.0 : kind === 'chunk' ? 2.6 : 1.6;
+      this.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * spin * (0.7 + Math.random() * 0.6);
+      // The sprite is an irregular rock, not a disc: a slightly smaller hitbox is fairer.
+      this.radius = size * 0.42;
+      const base = kind === 'large' ? 120 : kind === 'chunk' ? 150 : kind === 'gold' ? 130 : 140;
+      this.driftVx = -(base + Math.random() * 50);
+      this.driftVy = (Math.random() - 0.5) * 30;
+      this.updateRockFrame();
     }
 
     if (type === 'turret') {
@@ -116,6 +141,22 @@ export class Enemy extends Entity {
       this.turretLauncherMesh.rotation.z = Math.PI; // Face incoming player to the left
       this.mesh.add(this.turretLauncherMesh);
     }
+  }
+
+  /** Throw/redirect an asteroid (boss volleys, meteor storms, fragments). */
+  launch(vx: number, vy: number) {
+    this.driftVx = vx;
+    this.driftVy = vy;
+  }
+
+  private updateRockFrame() {
+    if (!this.rockKind) return;
+    const tau = Math.PI * 2;
+    const f = Math.floor((((this.spinPhase % tau) + tau) % tau) / tau * ROCK_FRAMES) % ROCK_FRAMES;
+    if (f === this.rockFrame) return;
+    this.rockFrame = f;
+    (this.mesh.material as THREE.MeshBasicMaterial).map =
+      AssetManager.getTexture(`rock_${this.rockKind}_${this.rockVariant}_${f}`);
   }
 
   takeDamage(amount: number) {
@@ -219,9 +260,10 @@ export class Enemy extends Entity {
         particles.spawnExplosion(this.mesh.position.x, this.mesh.position.y, 0x00ffff, 2);
       }
     } else if (this.type.startsWith('asteroid')) {
-      this.mesh.rotation.z += this.rotSpeed * dt;
-      this.vx = -160;
-      this.vy = Math.sin(this.timer * 0.8) * 15;
+      this.spinPhase += this.rotSpeed * dt;
+      this.updateRockFrame();
+      this.vx = this.driftVx;
+      this.vy = this.driftVy + Math.sin(this.timer * 0.8) * 8;
       if (this.type === 'asteroid_gold' && particles && Math.random() < 0.45) {
         particles.spawnExplosion(
           this.mesh.position.x + (Math.random() - 0.5) * 24,
@@ -479,8 +521,8 @@ export class Enemy extends Entity {
       }
     }
 
-    // Offscreen cleanup
-    if (this.mesh.position.x < cameraX - 500) {
+    // Offscreen cleanup (rocks can also leave through the top or bottom)
+    if (this.mesh.position.x < cameraX - 500 || this.mesh.position.y < -420 || this.mesh.position.y > 420) {
       this.active = false;
     }
   }
