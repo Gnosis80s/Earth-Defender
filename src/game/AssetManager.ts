@@ -56,6 +56,7 @@ export class AssetManager {
   }
 
   static getTexture(name: string): THREE.Texture {
+    this.ensureRegistered();
     if (!this.textures[name]) {
       if (this.generators[name]) {
         this.textures[name] = this.generators[name]();
